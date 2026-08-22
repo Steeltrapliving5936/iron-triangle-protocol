@@ -695,7 +695,9 @@ class WindowsPortabilityRegressionTests(unittest.TestCase):
         defn = supervisor.ServiceDefinition(
             label="io.iron-triangle.bridge", program=["python3", "-m", "iron_triangle"],
             state_dir="/tmp/x", log_out="/tmp/x/out.log", log_err="/tmp/x/err.log")
-        with mock.patch.object(os, "getuid", None):
+        # create=True: os.getuid does not exist on Windows at all — that is
+        # exactly the condition being simulated
+        with mock.patch.object(os, "getuid", None, create=True):
             plan = supervisor.plan_install("launchd", config, defn)
         flattened = " ".join(part for cmd in plan["commands"] for part in cmd)
         self.assertIn("gui/501", flattened)
