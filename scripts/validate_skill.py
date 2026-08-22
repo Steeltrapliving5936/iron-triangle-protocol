@@ -165,7 +165,10 @@ def validate_skill(skill_dir: pathlib.Path) -> dict[str, object]:
             referenced.add(candidate)
     for reference in sorted(referenced):
         target = (skill_dir / reference).resolve()
-        if not str(target).startswith(str(skill_dir.resolve()) + "/"):
+        # Path.is_relative_to compares path components flavour-aware, so this
+        # also holds on Windows backslash paths; a str.startswith check with a
+        # hardcoded "/" would flag every reference as an escape there.
+        if not target.is_relative_to(skill_dir.resolve()):
             errors.append(f"reference escapes the skill directory: {reference}")
         elif not target.exists():
             errors.append(f"reference does not resolve: {reference}")
