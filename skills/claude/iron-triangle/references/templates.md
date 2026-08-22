@@ -59,6 +59,20 @@ A receipt describes observed state. It must never turn a failed or absent check 
 
 Cover at minimum: missing evidence, red tests before deployment, rollback failure, budget warning/hard stop, executor transport outage, dual-idle timeout, second guardrail increase, window rotation, and end-to-end closure. Unknown policy choices are **open question**.
 
+## Decision summary block
+
+Mandatory at the end of every executor or reviewer turn. At most 10 lines. This is the arbiter's default intake; it does not replace receipts or independent reproduction.
+
+```markdown
+Decision summary
+- Conclusion: <one falsifiable line>
+- Key figures: <counts, hashes, durations, or none>
+- Risks: <list or none>
+- Decisions needed: <none | concrete ruling requests>
+```
+
+If the block is missing or too thin to rule, fail closed and request a complete summary. Do not treat the summary as evidence, and do not have the arbiter compensate by reading implementation.
+
 ## Arbiter closure briefing
 
 Mandatory whenever the reviewer records `closure-pass` or `needs-arbiter`. The arbiter states all six elements side by side — divergence is presented, never flattened:

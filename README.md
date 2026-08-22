@@ -128,7 +128,7 @@ A receipt-backed case study of that run — measured role costs, the end-to-end 
 ## Roadmap / 路线图
 
 - v0.4 (planned — listed as a roadmap item only, **not implemented in this release**): `init` install wizard. One command that writes a schema-validated private runtime config outside the repo, probes the configured adapter, offers to install the platform skill, and prints the exact follow-up commands. v0.4 计划提供 `init` 安装向导：一条命令在仓库外生成通过 schema 校验的私有运行配置、探测适配器、可选安装平台技能并输出后续命令。本版本仅列入路线图，未实现。
-- Remote CI first runs are done and green (see the support matrix); remaining release follow-ups are maintainer UI actions only — social preview upload and a non-owner private-report canary ([release gates](docs/release-gates.md)). 远程 CI 首跑已完成且全绿（见支持矩阵）；剩余发布跟进仅为主控 UI 动作——社交预览上传与非所有者私密报告 canary。
+- Remote CI first runs are done and green (see the support matrix); the private-vulnerability-reporting canary drill is **closed** (2026-08-22, advisory `GHSA-h5p7-vmmc-mpxc`, receipt `PVR-CANARY-20260822-R36`). The one remaining release follow-up is a maintainer UI action only: re-upload the social preview — the previously uploaded custom image now 404s and the repository page falls back to GitHub's automatic OpenGraph card ([release gates](docs/release-gates.md), [metadata checklist](docs/release/github-metadata.md)). 远程 CI 首跑已完成且全绿（见支持矩阵）；非所有者私密报告 canary 已闭合（2026-08-22，公告 `GHSA-h5p7-vmmc-mpxc`，回执 `PVR-CANARY-20260822-R36`）。剩余发布跟进仅一项主控 UI 动作：重新上传社交预览图——此前上传的自定义图现已 404，仓库页暂回落到 GitHub 自动 OpenGraph 卡片。
 
 ## Repository map / 仓库结构
 
@@ -144,7 +144,7 @@ A receipt-backed case study of that run — measured role costs, the end-to-end 
 - [`src/iron_triangle/`](src/iron_triangle/__init__.py): core policy state machine, adapter boundary, store, supervisors, CLI;
 - [`skills/iron-triangle/`](skills/iron-triangle/SKILL.md): canonical skill source; `skills/<platform>/iron-triangle/` generated adapters;
 - [`schemas/runtime-config.schema.json`](schemas/runtime-config.schema.json): versioned runtime-config contract;
-- [`examples/night-autonomy-contract.md`](examples/night-autonomy-contract.md): filled sample of [`assets/predecision-contract-template.md`](skills/iron-triangle/assets/predecision-contract-template.md);
+- [`examples/night-autonomy-contract.md`](examples/night-autonomy-contract.md): night-autonomy contract **template** (Status: template; fill every angle-bracket value before use), shaped after [`assets/predecision-contract-template.md`](skills/iron-triangle/assets/predecision-contract-template.md);
 - [`docs/assets/`](docs/assets/README.md): terminal-demo recording (GIF + capture source) and social preview (PNG + SVG);
 - [`tests/`](tests/): stdlib-only suite (bridge, policy, conformance, config, CLI lifecycle, supervisor plans, sanitization, skills, release assets).
 

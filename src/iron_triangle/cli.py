@@ -118,8 +118,17 @@ def cmd_status(args: argparse.Namespace, config: dict[str, Any]) -> None:
             "run_id": run.get("run_id"),
             "phase": run.get("phase"),
             "cwd": run.get("cwd"),
-            "executor": {"title": run.get("executor", {}).get("title"), "model": run.get("executor", {}).get("model")},
-            "reviewer": {"title": run.get("reviewer", {}).get("title"), "model": run.get("reviewer", {}).get("model")},
+            "executor": {
+                "title": run.get("executor", {}).get("title"),
+                "model": run.get("executor", {}).get("model"),
+                "model_receipt": run.get("executor", {}).get("model_receipt"),
+            },
+            "reviewer": {
+                "title": run.get("reviewer", {}).get("title"),
+                "model": run.get("reviewer", {}).get("model"),
+                "model_receipt": run.get("reviewer", {}).get("model_receipt"),
+            },
+            "independence": run.get("independence"),
             "ledger": run.get("ledger_path"),
             "arbiter_reason": run.get("arbiter_reason"),
             "updated_at": run.get("updated_at"),
@@ -130,6 +139,50 @@ def cmd_status(args: argparse.Namespace, config: dict[str, Any]) -> None:
 
 
 # --- launch --------------------------------------------------------------------
+
+MODEL_READBACK_UNREADBACK = "unreadback"
+
+
+def _effort_source(flag: str | None, adapter_default: Any, model: dict[str, Any]) -> str:
+    """Where the applied thinking effort came from, in precedence order."""
+    if flag:
+        return "flag"
+    if adapter_default:
+        return "adapter-config"
+    if model.get("default_effort"):
+        return "model-default"
+    return "none"
+
+
+def _model_receipt(
+    *,
+    requested: str | None,
+    resolved: dict[str, Any],
+    requested_effort: str | None,
+    applied_effort: str | None,
+    effort_source: str,
+) -> dict[str, Any]:
+    """Honest model-safety receipt for one role binding.
+
+    ``fallback_occurred`` is true only when the request named neither the
+    resolved entry's model id nor its display name exactly (a fuzzy/suffix
+    guess picked a different label than any name the user wrote). No adapter
+    read-back exists yet, so ``readback`` stays ``unreadback``: nothing may
+    claim the destination actually runs the applied values.
+    """
+    label = model_label(resolved)
+    names = {str(resolved.get("model", "")).casefold(), str(resolved.get("display_name", "")).casefold()}
+    fallback = bool(requested) and requested.strip().casefold() not in names
+    return {
+        "requested_model": requested,
+        "applied_model": label,
+        "model_source": "explicit" if requested else "adapter-default",
+        "requested_effort": requested_effort,
+        "applied_effort": applied_effort,
+        "effort_source": effort_source,
+        "fallback_occurred": fallback,
+        "readback": MODEL_READBACK_UNREADBACK,
+    }
 
 
 def cmd_launch(args: argparse.Namespace, config: dict[str, Any], config_path: pathlib.Path) -> None:
@@ -148,6 +201,20 @@ def cmd_launch(args: argparse.Namespace, config: dict[str, Any], config_path: pa
     reviewer_model = backend.resolve_model(args.reviewer_model, adapter_cfg.get("default_reviewer_model"))
     executor_thinking = default_thinking(executor_model, args.executor_thinking or adapter_cfg.get("default_executor_thinking"))
     reviewer_thinking = default_thinking(reviewer_model, args.reviewer_thinking or adapter_cfg.get("default_reviewer_thinking"))
+    executor_receipt = _model_receipt(
+        requested=args.executor_model,
+        resolved=executor_model,
+        requested_effort=args.executor_thinking,
+        applied_effort=executor_thinking,
+        effort_source=_effort_source(args.executor_thinking, adapter_cfg.get("default_executor_thinking"), executor_model),
+    )
+    reviewer_receipt = _model_receipt(
+        requested=args.reviewer_model,
+        resolved=reviewer_model,
+        requested_effort=args.reviewer_thinking,
+        applied_effort=reviewer_thinking,
+        effort_source=_effort_source(args.reviewer_thinking, adapter_cfg.get("default_reviewer_thinking"), reviewer_model),
+    )
     permission_mode = args.permission_mode or adapter_cfg.get("permission_mode", "auto")
     if permission_mode not in {"manual", "auto", "yolo"}:
         raise BridgeError("permission mode must be manual, auto, or yolo")
@@ -202,6 +269,9 @@ def cmd_launch(args: argparse.Namespace, config: dict[str, Any], config_path: pa
     )
     if executor_binding.session_id == reviewer_binding.session_id:
         raise BridgeError("executor and reviewer must use distinct sessions/windows")
+    # Independence disclosure (R-5 audit): reaching this line proves the two
+    # roles never share one session, so the level is verified by construction.
+    independence = {"level": "separate-sessions"}
 
     run: dict[str, Any] = {
         "schema_version": CONFIG_SCHEMA_VERSION,
@@ -213,8 +283,9 @@ def cmd_launch(args: argparse.Namespace, config: dict[str, Any], config_path: pa
         "cwd": str(cwd),
         "task": task.strip(),
         "ledger_path": str(directory / "ledger.md"),
-        "executor": dict(executor_binding.to_json(), role="executor"),
-        "reviewer": dict(reviewer_binding.to_json(), role="reviewer"),
+        "executor": dict(executor_binding.to_json(), role="executor", model_receipt=executor_receipt),
+        "reviewer": dict(reviewer_binding.to_json(), role="reviewer", model_receipt=reviewer_receipt),
+        "independence": independence,
         "phase": "launching",
         "round": 1,
         "review_round": 0,
@@ -254,8 +325,19 @@ def cmd_launch(args: argparse.Namespace, config: dict[str, Any], config_path: pa
             "launched": True,
             "run_id": run_id,
             "arbiter": "current-window",
-            "executor": {"title": executor_binding.title, "model": executor_binding.model},
-            "reviewer": {"title": reviewer_binding.title, "model": reviewer_binding.model},
+            "executor": {
+                "title": executor_binding.title,
+                "model": executor_binding.model,
+                "thinking": executor_thinking,
+                "model_receipt": executor_receipt,
+            },
+            "reviewer": {
+                "title": reviewer_binding.title,
+                "model": reviewer_binding.model,
+                "thinking": reviewer_thinking,
+                "model_receipt": reviewer_receipt,
+            },
+            "independence": independence,
             "ledger": run["ledger_path"],
             "phase": run["phase"],
         }
@@ -377,6 +459,13 @@ def cmd_resume(args: argparse.Namespace, config: dict[str, Any]) -> None:
                 }
                 run["pending_dispatch"] = None
                 run["phase"] = f"await-{role}"
+                # Reconcile the durable round with the contract that was
+                # actually sent: without this, the reviewer's legal decision
+                # for that round fails `decide` validation forever. Legacy
+                # pending records without the field gain no guessed bump.
+                contract_round = pending.get("contract_review_round")
+                if isinstance(contract_round, int) and contract_round > int(run.get("review_round", 0)):
+                    run["review_round"] = contract_round
                 run["last_progress_at"] = utc_now()
                 run.pop("arbiter_reason", None)
                 store.append_ledger(

@@ -661,6 +661,113 @@ class WatcherLanguagePropagationTests(unittest.TestCase):
             temp.cleanup()
 
 
+class ModelReceiptTests(unittest.TestCase):
+    """Launch persists honest model/effort/independence receipts (R-5 audit).
+
+    The receipt must never claim an applied value was verified on the
+    destination while no adapter read-back exists: ``readback`` stays
+    ``unreadback`` and any fallback out of a fuzzy resolution is disclosed.
+    """
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.tmp = pathlib.Path(self.temp.name)
+        self.config = _helpers.base_config(self.tmp)
+        self.backend = _BackendShim(self.config)
+        self._original = cli.SessionApiBackend
+        cli.SessionApiBackend = lambda cfg: self.backend
+        (self.tmp / "token").write_text("t", encoding="utf-8")
+
+    def tearDown(self) -> None:
+        cli.SessionApiBackend = self._original
+        self.temp.cleanup()
+
+    def _args(self, **overrides) -> argparse.Namespace:
+        values = {
+            "task": "Bounded receipt task.",
+            "task_file": None,
+            "cwd": str(self.tmp),
+            "title": None,
+            "executor_title": None,
+            "reviewer_title": None,
+            "executor_model": None,
+            "reviewer_model": None,
+            "executor_thinking": None,
+            "reviewer_thinking": None,
+            "executor_session": None,
+            "reviewer_session": None,
+            "permission_mode": None,
+            "language": None,
+            "dry_run": True,
+        }
+        values.update(overrides)
+        return argparse.Namespace(**values)
+
+    def _launch(self, **overrides) -> dict:
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            cli.cmd_launch(self._args(**overrides), self.config, self.tmp / "runtime.json")
+        return json.loads(buffer.getvalue())
+
+    def _status_entry(self, run_id: str) -> dict:
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            cli.cmd_status(argparse.Namespace(run_id=run_id, pending=False), self.config)
+        return json.loads(buffer.getvalue())[0]
+
+    def test_default_launch_records_adapter_defaults_and_unreadback(self) -> None:
+        payload = self._launch(dry_run=False)
+        receipt = payload["executor"]["model_receipt"]
+        self.assertIsNone(receipt["requested_model"])
+        self.assertEqual(receipt["applied_model"], "executor-a")
+        self.assertEqual(receipt["model_source"], "adapter-default")
+        self.assertFalse(receipt["fallback_occurred"])
+        self.assertIsNone(receipt["requested_effort"])
+        self.assertIsNone(receipt["applied_effort"])
+        self.assertEqual(receipt["effort_source"], "none")
+        self.assertEqual(receipt["readback"], "unreadback")  # never claims verified
+        self.assertEqual(payload["independence"], {"level": "separate-sessions"})
+
+        # The same receipt is durable and surfaced by status.
+        run = list(store.iter_runs(self.config))[0]
+        self.assertEqual(run["executor"]["model_receipt"], receipt)
+        self.assertEqual(run["independence"], {"level": "separate-sessions"})
+        entry = self._status_entry(run["run_id"])
+        self.assertEqual(entry["executor"]["model_receipt"], receipt)
+        self.assertEqual(entry["reviewer"]["model_receipt"]["applied_model"], "reviewer-b")
+        self.assertEqual(entry["independence"], {"level": "separate-sessions"})
+
+    def test_explicit_names_and_flags_are_recorded_without_fallback(self) -> None:
+        payload = self._launch(executor_model="Executor A", executor_thinking="high", dry_run=False)
+        receipt = payload["executor"]["model_receipt"]
+        self.assertEqual(receipt["requested_model"], "Executor A")
+        self.assertEqual(receipt["applied_model"], "executor-a")
+        self.assertEqual(receipt["model_source"], "explicit")
+        self.assertFalse(receipt["fallback_occurred"])  # display name is an exact naming
+        self.assertEqual(receipt["requested_effort"], "high")
+        self.assertEqual(receipt["applied_effort"], "high")
+        self.assertEqual(receipt["effort_source"], "flag")
+
+    def test_fuzzy_resolution_is_disclosed_as_fallback(self) -> None:
+        payload = self._launch(executor_model="executor", dry_run=False)
+        receipt = payload["executor"]["model_receipt"]
+        self.assertEqual(receipt["applied_model"], "executor-a")
+        self.assertTrue(receipt["fallback_occurred"])
+
+    def test_effort_source_precedence_flag_adapter_then_model_default(self) -> None:
+        self.config["adapters"]["kimi-code"]["default_reviewer_thinking"] = "mid"
+        payload = self._launch(dry_run=False)
+        reviewer = payload["reviewer"]["model_receipt"]
+        self.assertEqual(reviewer["effort_source"], "adapter-config")
+        self.assertEqual(reviewer["applied_effort"], "mid")
+
+        self.backend.models_catalog[0]["default_effort"] = "low"
+        payload = self._launch(dry_run=False)  # second run, adapter default only set for reviewer
+        executor = payload["executor"]["model_receipt"]
+        self.assertEqual(executor["effort_source"], "model-default")
+        self.assertEqual(executor["applied_effort"], "low")
+
+
 class TransportUnknownRecoveryTests(unittest.TestCase):
     """Event-cursor recovery: transport-unknown → manual ack → turn.ended consumed.
 
@@ -755,6 +862,87 @@ class TransportUnknownRecoveryTests(unittest.TestCase):
         self._resume_ack(run)
         resumed = store.load_run(self.config, run["run_id"])
         self.assertNotIn("executor_event_offset", resumed)
+
+    def test_legacy_pending_without_contract_round_is_not_guessed(self) -> None:
+        """A pre-contract-round pending record must not gain a guessed bump."""
+        run = make_run(self.config, _helpers.FakeBackend(self.config), self.tmp)
+        run["phase"] = "transport-unknown"
+        run["pending_dispatch"] = {"role": "reviewer", "prompt_id": "it_p", "baseline_seq": 0}
+        store.save_run(self.config, run)
+        self._resume_ack(run)
+        resumed = store.load_run(self.config, run["run_id"])
+        self.assertEqual(resumed["phase"], "await-reviewer")
+        self.assertEqual(resumed["review_round"], 0)
+
+    def test_ack_after_unknown_reviewer_dispatch_reconciles_review_round(self) -> None:
+        """Root-cause regression: after a transport-unknown reviewer dispatch,
+        the manual ack must reconcile the durable review_round with the
+        contract that was actually sent, so the reviewer's legal decision can
+        decide the same contract instead of failing round validation.
+
+        Field failure chain: the reviewer contract is built for round N+1, but
+        the queued durable bump is intentionally dropped when delivery lands in
+        transport-unknown; ``resume --ack-prompt-id`` restored delivery
+        bookkeeping only, so ``decide --review-round N+1`` was rejected forever.
+        """
+        from iron_triangle.runner import step_run
+
+        backend = _helpers.FakeBackend(self.config)
+        run = make_run(self.config, backend, self.tmp, dispatch_now=True)
+        self.assertEqual(run["phase"], "await-executor")
+
+        # The executor turn ends; the reviewer dispatch hits an unknown state.
+        backend.fail_mode = "unknown"
+        backend.end_turn(run["executor"]["session_id"])
+        step_run(
+            config=self.config,
+            config_path=self.tmp / "runtime.json",
+            bridge_path=BRIDGE,
+            run=run,
+            backend=backend,
+        )
+        self.assertEqual(run["phase"], "transport-unknown")
+        self.assertEqual(run["review_round"], 0)  # fail-closed: the bump was skipped
+        pending = run["pending_dispatch"]
+        self.assertEqual(pending["role"], "reviewer")
+        reviewer_text = [d for d in backend.dispatches if d["role"] == "reviewer"][-1]["text"]
+        self.assertIn("--review-round 1", reviewer_text)  # the sent contract references round 1
+
+        store.save_run(self.config, run)
+        backend.fail_mode = None  # human verified the destination window
+        args = argparse.Namespace(run_id=run["run_id"], ack_prompt_id=pending["prompt_id"], retry_new=False)
+        with contextlib.redirect_stdout(io.StringIO()):
+            cli.cmd_resume(args, self.config)
+
+        resumed = store.load_run(self.config, run["run_id"])
+        self.assertEqual(resumed["phase"], "await-reviewer")
+        self.assertEqual(resumed["review_round"], 1)  # reconciled with the sent contract
+
+        # The reviewer's per-contract decision must be accepted...
+        decide_args = argparse.Namespace(
+            run_id=run["run_id"],
+            review_round=1,
+            decision="closure-pass",
+            ledger_sequence="R-2",
+            message="independently reproduced the focused checks",
+            message_file=None,
+        )
+        with contextlib.redirect_stdout(io.StringIO()):
+            cli.cmd_decide(decide_args, self.config)
+
+        # ...and the same contract consumes it instead of escalating.
+        backend.end_turn(resumed["reviewer"]["session_id"])
+        changed = step_run(
+            config=self.config,
+            config_path=self.tmp / "runtime.json",
+            bridge_path=BRIDGE,
+            run=resumed,
+            backend=backend,
+        )
+        self.assertTrue(changed)
+        self.assertEqual(resumed["phase"], "await-final-acceptance")
+        outbox = [json.loads(line) for line in (store.state_dir(self.config) / "arbiter-outbox.jsonl").read_text(encoding="utf-8").splitlines()]
+        self.assertTrue(any(item["kind"] == "ROUND_CLOSURE_PASS" for item in outbox))
 
 
 if __name__ == "__main__":

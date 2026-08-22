@@ -57,7 +57,7 @@ ROUND_CLOSURE_PASS: <ledger sequence> | <scope> | <receipt set>
 Load on demand:
 
 - [references/workflow.md](references/workflow.md) — three-role start checklists, the ten required mechanisms, and closure conditions;
-- [references/templates.md](references/templates.md) — ledger entry, receipt, review record, and pre-decision templates;
+- [references/templates.md](references/templates.md) — ledger entry, receipt, review record, pre-decision, decision-summary, and closure-briefing templates;
 - [references/failure-controls.md](references/failure-controls.md) — the seven observed failure classes and their controls;
 - [references/platform-codex.md](references/platform-codex.md), [references/platform-claude-code.md](references/platform-claude-code.md), [references/platform-kimi-session-api.md](references/platform-kimi-session-api.md), [references/platform-cursor.md](references/platform-cursor.md), [references/platform-generic-cli.md](references/platform-generic-cli.md) — per-runtime orchestration mappings for the four primitives (`turn_ended`, `dispatch`, `watch`, `escalate`);
 - [assets/ledger-entry-template.md](assets/ledger-entry-template.md), [assets/receipt-template.yaml](assets/receipt-template.yaml), [assets/predecision-contract-template.md](assets/predecision-contract-template.md) — copy-paste starting files.
@@ -72,6 +72,17 @@ Load on demand:
 6. Unknown policy choices are written as **open question**, not filled by assumption.
 7. Language is automatic — the user never operates a language switch. Before launching, determine one `response_language` for the whole run: an explicit user language requirement wins; otherwise use the dominant language of the user's task (the bridge also auto-detects it when nothing explicit exists). Pass it once (`launch --language <code>` or config `"language"`); the executor and reviewer inherit it jointly and never re-judge separately. Catalog-backed languages (`en`, `zh-CN`) localize window titles, contracts, and narration values; any other recognized code keeps English machine fields and role labels while both roles' natural-language replies follow `response_language`. For a mid-run switch, the arbiter registers it (`arbiter --decision continue --language <code>`) so both roles change together — never one silently splitting from the other. Native UI text of third-party apps stays outside this policy (**open question**).
 
+## Arbiter cost partition
+
+These rules operationalize mechanism 10. They do not add an eleventh mechanism and they do not change the marker contract.
+
+- The arbiter produces ruling text only: acceptance lines, red lines, pre-decisions, exception rulings, and the six-element closure briefing. Session creation, worker dispatch, polling, material assembly, and evidence persistence belong to the executor or the supervised orchestration layer.
+- The arbiter window MAY invoke the documented bridge commands that start a run or record a ruling (`launch`, `status --pending`, `arbiter --decision`). It MUST NOT call vendor session APIs, debug consoles, or perform executor investigation.
+- At the end of every executor or reviewer turn, attach a compact **decision-summary block** of at most 10 lines covering conclusion, key figures, risks, and items needing a ruling (see [references/templates.md](references/templates.md)). Full worker narratives stay in evidence files. The arbiter's default intake is that block plus receipt identifiers. If the block is missing or too thin to rule, fail closed and request a complete summary — do not compensate by reading implementation.
+- Role trials or replacements: the arbiter freezes the prompt template in the ledger; the executor delivers it verbatim. The arbiter does not run the trial.
+- Incidents, including production or P0 events, do not exempt the cost partition. The arbiter still rules from the summary and receipts; it does not become the incident operator.
+- Two consecutive execution-layer actions by the arbiter are a process incident: stop, reassign, and append the incident to the ledger.
+
 ## Arbiter closure briefing
 
 After every reviewer `closure-pass` or `needs-arbiter`, the arbiter's ruling to the user MUST state, side by side:
@@ -83,7 +94,7 @@ After every reviewer `closure-pass` or `needs-arbiter`, the arbiter's ruling to 
 5. the recommended next step;
 6. the authorization basis for automatic continuation (a pre-decision covering the same scope) or an explicit wait for user confirmation.
 
-The arbiter synthesizes evidence and ruling scope; it is **not a third technical reviewer** and must never claim to have personally re-run checks — divergence between roles is presented, not flattened. Within the same authorized scope, fixes already covered by pre-decisions may auto-continue. After closure, any new substantive scope requires a pre-decision or explicit user authorization; a briefing without element 6 is incomplete.
+The six-element briefing is synthesized from the workers' decision-summary blocks and receipt results. The arbiter synthesizes evidence and ruling scope; it is **not a third technical reviewer** and must never claim to have personally re-run checks — divergence between roles is presented, not flattened. Within the same authorized scope, fixes already covered by pre-decisions may auto-continue. After closure, any new substantive scope requires a pre-decision or explicit user authorization; a briefing without element 6 is incomplete.
 
 # Platform mapping: Claude Code
 

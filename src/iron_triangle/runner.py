@@ -101,13 +101,23 @@ def build_policy_input(config: dict[str, Any], run: dict[str, Any], backend: Bri
     return inp
 
 
+def contract_review_round(run: dict[str, Any], text_key: str) -> int:
+    """The review round the dispatched text tells its reader to decide on.
+
+    The reviewer contract must reference the round about to start; every other
+    dispatch (executor contract, raw messages) carries the current round.
+    """
+    round_now = int(run.get("review_round", 0))
+    return round_now + 1 if text_key == "reviewer-contract" else round_now
+
+
 def dispatch_text(run: dict[str, Any], action: policy.Dispatch, bridge_path: pathlib.Path, config_path: pathlib.Path) -> str:
     if action.text_key == "executor-contract":
         return prompts.executor_prompt(run)
     if action.text_key == "reviewer-contract":
         # The reviewer contract must reference the round about to start.
         bumped = dict(run)
-        bumped["review_round"] = int(run.get("review_round", 0)) + 1
+        bumped["review_round"] = contract_review_round(run, action.text_key)
         return prompts.reviewer_prompt(bumped, bridge_path, config_path)
     return action.literal
 
@@ -134,6 +144,9 @@ def execute_actions(
                 "prompt_id": prompt_id,
                 "baseline_seq": baseline,
                 "event_offset": offset,
+                # Persist the round the sent text references so a manual ack
+                # can reconcile durable state with what actually went out.
+                "contract_review_round": contract_review_round(run, action.text_key),
                 "recorded_at": utc_now(),
             }
             delivery = backend.dispatch(

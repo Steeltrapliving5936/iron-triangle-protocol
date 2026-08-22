@@ -38,6 +38,8 @@ python3 scripts/iron_triangle_bridge.py \
 
 Override either role per task with `--executor-model` / `--reviewer-model` (model id or unique display name; resolved against the live catalog, ambiguity fails closed) and `--executor-thinking` / `--reviewer-thinking`. Reuse named existing windows with `--executor-session` / `--reviewer-session`; ambiguous names fail closed printing the matches, and executor/reviewer can never share one window. `--dry-run` prints the plan without side effects.
 
+Each role's launch persists a model receipt in run state (and prints it; `status` surfaces it): requested and applied model, whether the request was explicit or an adapter default, requested and applied thinking effort plus its source (`flag` / `adapter-config` / `model-default` / `none`), whether resolution fell back to a label the request never named, and the run's independence level (`separate-sessions`). No adapter read-back exists yet, so `readback` stays `unreadback` — the receipt never claims the destination was verified to run the applied values.
+
 New role windows are named deterministically from the task's first line (`[IT EXEC] …` / `[IT REVIEW] …`, localized prefixes under `zh-CN`) unless overridden with `--title`, or per-role `--executor-title` / `--reviewer-title`.
 
 ### Narration language
@@ -99,7 +101,7 @@ When a dispatch state is unknown (crash between send and record, or transport ti
 ... resume --run-id <run-id> --retry-new
 ```
 
-Both append a ledger receipt of the human verification; nothing auto-resends.
+Both append a ledger receipt of the human verification; nothing auto-resends. An ack also reconciles durable state with what was actually sent: if the unknown dispatch carried a reviewer contract for round N+1, the ack restores `review_round = N+1`, so the reviewer's per-contract decision is accepted by `decide` instead of failing round validation.
 
 ## Product lifecycle commands
 

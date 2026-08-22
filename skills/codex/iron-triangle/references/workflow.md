@@ -7,6 +7,7 @@
 - Record one goal, the out-of-scope boundary, a measurable acceptance line, and the end-to-end release gate.
 - Define destructive/irreversible red lines and required rollback evidence.
 - Set budget limits and the events that justify arbiter involvement.
+- Consume the workers' decision-summary blocks plus receipt identifiers; do not perform executor work or call vendor session APIs.
 - Pre-decide predictable branches as "if X, then Y".
 - Name the ledger and the marker contract.
 
@@ -16,6 +17,7 @@
 - Choose the smallest reversible slice and its nearest result sensor.
 - State the falsifiable claim and receipt before mutation.
 - Confirm tests and read-back sensors exist before changing anything.
+- End the turn with a decision-summary block of at most 10 lines.
 - Append results; never rewrite prior ledger entries.
 
 ### Reviewer
@@ -23,6 +25,7 @@
 - Read the acceptance line and raw receipts, not the executor's conclusion alone.
 - Confirm independent access to rerun tests, recompute hashes, read deployed state, or exercise the real channel.
 - Fail closed on missing evidence, exceeded authority, or a red-line contact.
+- End the turn with a decision-summary block of at most 10 lines. The summary is not evidence; independent reproduction remains mandatory.
 - Emit exactly one column-one marker after each review turn.
 
 ## Ten required mechanisms

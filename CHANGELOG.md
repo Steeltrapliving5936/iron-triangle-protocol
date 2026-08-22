@@ -2,6 +2,18 @@
 
 All notable changes to the Iron Triangle protocol tooling are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Canonical skill operationalizes mechanism 10 (cost partition) without changing `docs/protocol-spec.md` (Gate 2 still owns normative protocol text): the arbiter produces ruling text only; executor and reviewer attach a ≤10-line decision-summary block; incidents do not exempt the budget; two consecutive arbiter execution-layer actions are a process incident. Documented bridge commands that start a run or record a ruling remain allowed. Private instance names, local marker aliases, and host paths stay out of the public tree.
+- Model-safety receipts (R-5 audit follow-up): `launch` persists per-role receipts in run state — requested and applied model, explicit-vs-adapter-default source, requested and applied thinking effort with its source (`flag` / `adapter-config` / `model-default` / `none`), whether catalog resolution fell back to a label the request never named, and the run's independence level (`separate-sessions`, enforced by construction). No adapter read-back exists yet, so every receipt records `readback: unreadback`; nothing may claim an applied value was verified on the destination. `status` surfaces the same fields.
+
+### Fixed
+
+- `resume --ack-prompt-id` now reconciles the durable review round with the contract that was actually sent. Previously, when a reviewer dispatch landed in transport-unknown, the queued round bump was dropped and the manual ack restored only delivery bookkeeping — so the reviewer's legal per-contract decision (`decide --review-round N+1`) failed round validation forever. The dispatched round is persisted in `pending_dispatch` (`contract_review_round`) and restored on ack; legacy pending records without the field gain no guessed bump. Covered by a regression test that reproduces the failure and decides the recovered run to closure.
+- README no longer describes `examples/night-autonomy-contract.md` as a filled sample; the file is and declares itself a template (`Status: template`).
+
 ## [0.3.0-rc.1] - 2026-08-22
 
 Release candidate: Chinese-first run narration plus release-gate hardening. No normative protocol change. The first remote CI runs completed green across ubuntu/macos/windows × Python 3.9/3.12 plus Ubuntu/macOS fresh-contributor smokes; published as the tagged prerelease `v0.3.0-rc.1`.

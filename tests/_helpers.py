@@ -69,9 +69,23 @@ class FakeBackend:
     # -- catalog / binding --------------------------------------------------------
 
     def resolve_model(self, requested: str | None, default: str | None) -> dict:
+        # Mirrors sessionapi.resolve_model tiers: exact name/display-name
+        # match first, then a unique substring (fuzzy) match.
         query = (requested or default or "").strip()
-        matches = [m for m in self.models_catalog if m["model"] == query]
+        lowered = query.casefold()
+        matches = [
+            m
+            for m in self.models_catalog
+            if lowered in {str(m["model"]).casefold(), str(m["display_name"]).casefold()}
+        ]
         if len(matches) != 1:
+            fuzzy = [
+                m
+                for m in self.models_catalog
+                if lowered in str(m["model"]).casefold() or lowered in str(m["display_name"]).casefold()
+            ]
+            if len(fuzzy) == 1:
+                return fuzzy[0]
             raise ValueError(f"model not resolvable: {query!r}")
         return matches[0]
 
