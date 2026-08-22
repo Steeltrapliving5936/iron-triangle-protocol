@@ -156,11 +156,19 @@ def launchd_plist_path(config: dict[str, Any], defn: ServiceDefinition) -> pathl
     return home / "Library" / "LaunchAgents" / f"{defn.label}.plist"
 
 
+def _launchd_uid() -> int:
+    """The launchd gui-domain uid. Only macOS has launchd; dry-run plan
+    rendering must still work cross-platform (offline tests), so platforms
+    without os.getuid get a fixed placeholder uid."""
+    getter = getattr(os, "getuid", None)
+    return int(getter()) if getter else 501
+
+
 def plan_install(target: str, config: dict[str, Any], defn: ServiceDefinition) -> dict[str, Any]:
     """A fully serializable install plan; applying it is a separate decision."""
     if target == "launchd":
         plist_path = launchd_plist_path(config, defn)
-        domain = f"gui/{os.getuid()}"
+        domain = f"gui/{_launchd_uid()}"
         commands = [
             ["write", str(plist_path), "<rendered-plist-bytes>"],
             ["launchctl", "bootout", f"{domain}/{defn.label}"],
@@ -188,7 +196,7 @@ def plan_install(target: str, config: dict[str, Any], defn: ServiceDefinition) -
 def plan_uninstall(target: str, config: dict[str, Any], defn: ServiceDefinition) -> dict[str, Any]:
     if target == "launchd":
         plist_path = launchd_plist_path(config, defn)
-        domain = f"gui/{os.getuid()}"
+        domain = f"gui/{_launchd_uid()}"
         commands = [
             ["launchctl", "bootout", f"{domain}/{defn.label}"],
             ["remove", str(plist_path)],
@@ -218,7 +226,7 @@ def apply_install_launchd(config: dict[str, Any], defn: ServiceDefinition) -> di
     tmp = plist_path.with_name(f".{plist_path.name}.{os.getpid()}.tmp")
     tmp.write_bytes(render_launchd(defn))
     os.replace(tmp, plist_path)
-    domain = f"gui/{os.getuid()}"
+    domain = f"gui/{_launchd_uid()}"
     subprocess.run(["launchctl", "bootout", f"{domain}/{defn.label}"], check=False, capture_output=True)
     result = subprocess.run(
         ["launchctl", "bootstrap", domain, str(plist_path)],
@@ -236,7 +244,7 @@ def apply_uninstall_launchd(config: dict[str, Any], defn: ServiceDefinition) -> 
     if sys.platform != "darwin":
         raise BridgeError("apply_uninstall_launchd is only supported on darwin; use --dry-run elsewhere")
     plist_path = launchd_plist_path(config, defn)
-    domain = f"gui/{os.getuid()}"
+    domain = f"gui/{_launchd_uid()}"
     subprocess.run(["launchctl", "bootout", f"{domain}/{defn.label}"], check=False, capture_output=True)
     removed = False
     if plist_path.exists():

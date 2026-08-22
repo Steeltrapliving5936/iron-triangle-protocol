@@ -27,8 +27,24 @@ from .sessionapi import SessionApiBackend, default_thinking, model_label
 from .util import append_jsonl, atomic_json, exclusive_lock, expand_path, utc_now
 
 
+def _print_stderr(text: str) -> None:
+    try:
+        print(text, file=sys.stderr)
+    except UnicodeEncodeError:
+        sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+        print(text, file=sys.stderr)
+
+
 def _print_json(value: Any) -> None:
-    print(json.dumps(value, ensure_ascii=False, indent=2))
+    text = json.dumps(value, ensure_ascii=False, indent=2)
+    try:
+        print(text)
+    except UnicodeEncodeError:
+        # Windows consoles default to a legacy codepage that cannot encode
+        # CJK narration; the CLI's output contract is UTF-8, so reconfigure
+        # the stream and retry once.
+        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
+        print(text)
 
 
 # --- read-only inspection -----------------------------------------------------
@@ -802,7 +818,7 @@ def main(argv: list[str] | None = None) -> int:
             parser.error(f"unknown command: {args.command}")
         return 0
     except (BridgeError, OSError, ValueError) as exc:
-        print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False), file=sys.stderr)
+        _print_stderr(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
         return 2
 
 
