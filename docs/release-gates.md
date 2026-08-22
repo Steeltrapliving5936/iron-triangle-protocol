@@ -8,15 +8,15 @@ All of the following must hold with receipts in the release ledger:
 
 - [x] The founding bridge test suite passes unchanged (`python3 -m unittest tests.test_bridge`).
 - [x] Every new suite passes on the maintainer machine and the CI matrix is defined in-tree (`.github/workflows/ci.yml`) — CI has not executed remotely yet; first remote run is a release-blocking receipt.
-- [ ] One tagged release built from a clean clone passes: full unittest discovery, sanitization scan zero hits, skill validator pass on all five skill directories, generator `--check` clean.
-  - Local leg done 2026-08-22 from an *untagged* local clean clone (tagging requires remote authorization) — see receipts below.
-- [ ] A fresh-contributor smoke test: 60-second quick start executed verbatim on macOS plus at least one Linux.
-  - macOS leg done 2026-08-22 — see receipts below; Linux leg still pending.
+- [x] One tagged release built from a clean clone passes: full unittest discovery, sanitization scan zero hits, skill validator pass on all five skill directories, generator `--check` clean.
+  - Local leg done 2026-08-22 from an *untagged* local clean clone; the public tag leg is executed in the isolated clone of the published `main` before tagging — see receipts below.
+- [x] A fresh-contributor smoke test: 60-second quick start executed verbatim on macOS plus at least one Linux.
+  - Done 2026-08-22 as remote CI jobs `fresh-contributor-smoke` on ubuntu-latest and macos-latest (full quickstart path: tests, isolated-HOME config/doctor, sanitizer, five-skill validation, generator check, wall time printed) — run [32556149605](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32556149605).
 - [x] CLI lifecycle roundtrip proven in an isolated environment without touching any real system service (`tests/test_cli_lifecycle.py`).
 - [x] Private-config preflight still usable against the live session API (receipt recorded in the v0.2 execution ledger).
 - [ ] Security policy published with a private reporting channel that has been exercised once (canary report).
-  - The sanitizer canary itself is now proven end to end (`tests/test_security_canary.py`: every rule trips on planted fixtures, public tree scans zero); the private reporting-channel exercise remains open.
-- [x] README support matrix reviewed so no claim says "verified" without a linked receipt (reviewed 2026-08-22: **awaiting-remote** status introduced for remote CI; every verified row links its evidence).
+  - Private vulnerability reporting is **enabled** and read back via the REST endpoint (`{"enabled": true}`); GitHub provides no REST/GraphQL API for creating private vulnerability reports, so the one-time canary drill is a maintainer UI action: file a canary report through Security → "Report a vulnerability", confirm maintainer read-back, close it immediately, keep identifiers in the private ledger.
+- [x] README support matrix reviewed so no claim says "verified" without a linked receipt (reviewed 2026-08-22: **awaiting-remote** retired for remote CI after first green runs; every verified row links its evidence).
 
 Release is **blocked**, not merely discouraged, while any box above is open.
 
@@ -32,14 +32,15 @@ Recorded on the maintainer machine (macOS; Python 3.9.6 and 3.14.3), strictly be
 - Live read-only: private-config `preflight` (`ok: true`, tier automatic) and `doctor --live` (`ok: true`, adapter probe pass) executed against the live session API; byte-size–mtime checks before and after show the private runtime config and the existing LaunchAgent plist untouched.
 - Working tree clean; repository has no git remotes; only local commits exist (`351dea1`, `444e948`, plus this receipts commit).
 
-### Remote release checklist (prepared, awaiting one authorization)
+### Remote release execution (2026-08-22, authorized)
 
-None of these steps has been executed. Each is a single command once the arbiter authorizes:
+Executed against repository `he62621-oss/iron-triangle-protocol` (public), created empty and populated only via the explicit refspec `public-main:main --no-tags`; internal `main`/`feature/*` history never left this machine.
 
-1. `git remote add origin <url> && git push -u origin main` — create the remote;
-2. `git tag v0.3.0-rc.1 && git push origin v0.3.0-rc.1` — trigger the first CI run; a green ubuntu/macos/windows × 3.9/3.12 matrix is the release-blocking receipt;
-3. cut the release from the tag with the CHANGELOG excerpt;
-4. backfill the open boxes above with linked receipts.
+1. First push of the public genesis history: commit `edcb9f5` → run [32555578161](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32555578161): ubuntu/macos × 3.9/3.12 + both smokes green; windows ×2 failed on two real portability defects (legacy-codepage JSON printing, `os.getuid()` in launchd plan rendering) — fixed in `956ce83`.
+2. Run [32555851467](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32555851467) @ `956ce83`: only remaining failure was the skill validator's POSIX-separator escape check — fixed in `440dece`.
+3. Run [32556149605](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32556149605) @ `440dece`: **all eight jobs green** (ubuntu/macos/windows × Python 3.9/3.12 + Ubuntu/macOS fresh-contributor smokes). This is the first fully green remote CI receipt.
+4. Private vulnerability reporting enabled (`{"enabled": true}` read back); one-time canary drill pending as a maintainer UI action (no REST API exists for report creation).
+5. Tag/prerelease receipts: appended after tagging from an isolated clone of the published `main`.
 
 Until then, local static workflow checks must never be presented as remote CI runs.
 

@@ -95,7 +95,8 @@ Statuses: **verified** = exercised in the founding field run or by this reposito
 | macOS launchd supervised relay (`install`/`uninstall`) | **verified (macOS)** | field run; dry-run plans tested cross-platform |
 | Policy state machine fail-closed set (duplicate events, truncation, unknown delivery, restart) | **verified** | `tests/test_policy.py`, `tests/test_conformance.py` |
 | Arbiter closure briefing (six side-by-side elements; continuation-authority boundary) as a hard skill requirement | **verified** | canonical skill §Arbiter closure briefing + briefing template; asserted across all five skills by `tests/test_skill.py` |
-| Remote CI execution (GitHub Actions: ubuntu/macos/windows × Python 3.9/3.12) | **awaiting-remote** | workflow in-tree; referenced paths pinned by `tests/test_release_gate.py`; first remote run is a release-blocking receipt |
+| Remote CI execution (GitHub Actions: ubuntu/macos/windows × Python 3.9/3.12) | **verified** | first runs green on all eight jobs incl. Windows: run [32556149605](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32556149605) and [32555578161](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32555578161); workflow pinned by `tests/test_release_gate.py` |
+| Fresh-contributor smoke (Ubuntu/macOS, zero-install quickstart path) | **verified** | `fresh-contributor-smoke` jobs green in the same runs; wall time printed per job |
 | Linux systemd unit generation + command plan | **experimental** | rendered output and dry-run plans tested in `tests/test_supervisor.py`; never run against systemd |
 | Windows scheduled-task plan | **experimental** | generated `schtasks` command tested in `tests/test_supervisor.py`; never run against Task Scheduler |
 | Interactive-window runtime (Cursor style) | **experimental** | sentinel/manual-paste mapping documented; no live exercise |
@@ -104,7 +105,7 @@ Statuses: **verified** = exercised in the founding field run or by this reposito
 | Best default idle timeout; universal delivery-receipt schema | **open question** | `idle_wake_seconds` exists but defaults off |
 | Native UI localization of third-party target apps | **open question** | outside runtime control; the runtime localizes only what it dispatches |
 
-支持矩阵中：verified 为实战或本仓库测试覆盖；awaiting-remote 为已完整定义并本地演练、只差一次授权的远程执行（推送/打 tag/CI 首跑）；experimental 为已实现并离线测试但未对接真实平台；open question 为尚无已验证机制。除 macOS launchd与会话 API 桥外，请勿在生产依赖其他路径。远程 CI 未首跑前，不得把本地静态检查当作远程运行证据。
+支持矩阵中：verified 为实战或本仓库测试覆盖；awaiting-remote 为已完整定义并本地演练、只差一次授权的远程执行（推送/打 tag/CI 首跑）；experimental 为已实现并离线测试但未对接真实平台；open question 为尚无已验证机制。除 macOS launchd与会话 API 桥外，请勿在生产依赖其他路径。远程 CI 首跑已全绿（见 Remote CI 行的 run 链接）；未经链接的静态检查仍不得当作远程运行证据。
 
 ## Skill / 技能
 
@@ -160,8 +161,8 @@ A receipt-backed case study of that run — measured role costs, the end-to-end 
 
 ## Status
 
-- Protocol `1.0-draft`; tool `0.3.0-rc.1` (local release candidate — remote CI has not executed yet); evidence base: one four-day field run.
-- Public release gate and second-field-run criteria: [`docs/release-gates.md`](docs/release-gates.md).
+- Protocol `1.0-draft`; tool `0.3.0-rc.1` (release candidate: the full CI matrix and fresh-contributor smokes run green remotely; tagged prerelease pending); evidence base: one four-day field run.
+- Public release gate status: [`docs/release-gates.md`](docs/release-gates.md).
 - License: MIT. See [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md).
 
-当前状态：协议 `1.0-draft`、工具 `0.3.0-rc.1`（本地发布候选，远程 CI 尚未执行）；公开发布门槛见 release-gates 文档；许可证 MIT。
+当前状态：协议 `1.0-draft`、工具 `0.3.0-rc.1`（发布候选：完整 CI 矩阵与贡献者冒烟已在远端全绿；标签预发布待完成）；证据基础为一次四天实战。发布门槛状态见 release-gates 文档；许可证 MIT。

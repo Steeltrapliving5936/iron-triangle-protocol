@@ -6,7 +6,7 @@ This repository ships orchestration tooling that dispatches prompts between agen
 
 ## Reporting a vulnerability
 
-Open a private security advisory via GitHub's "Report a vulnerability" flow, or contact the maintainers through the channel listed in the release announcement once one exists. Do not open a public issue for exploitable behavior.
+GitHub's **private vulnerability reporting is enabled** for this repository (Security tab → "Report a vulnerability"). Do not open a public issue for exploitable behavior.
 
 Include: affected command path, minimal reproduction, and observed vs expected delivery state. Responses target 7 days; releases for critical issues target 14 days.
 

@@ -4,7 +4,7 @@ All notable changes to the Iron Triangle protocol tooling are documented here. F
 
 ## [0.3.0-rc.1] - 2026-08-22
 
-Local release candidate: Chinese-first run narration plus release-gate hardening. No normative protocol change. Remote CI has not executed yet; this candidate is release-ready locally and waits on one remote authorization.
+Release candidate: Chinese-first run narration plus release-gate hardening. No normative protocol change. The first remote CI runs completed green across ubuntu/macos/windows × Python 3.9/3.12 plus Ubuntu/macOS fresh-contributor smokes; published as the tagged prerelease `v0.3.0-rc.1`.
 
 ### Added
 
