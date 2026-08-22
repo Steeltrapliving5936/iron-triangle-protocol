@@ -123,7 +123,7 @@ class FrozenContentTests(unittest.TestCase):
             "**No platform beyond the session-API runtime below is field-verified yet**",
             "Statuses: **verified** = exercised in the founding field run or by this repository's test suite;",
             "- It does not treat an executor report as evidence or an internal health check as user acceptance.",
-            "远程 CI 未首跑前，不得把本地静态检查当作远程运行证据。",
+            "远程 CI 首跑已全绿（见 Remote CI 行的 run 链接）；未经链接的静态检查仍不得当作远程运行证据。",
             "实测暴露了接力假死、双闲死锁、执行端断供、转述式审查、带红部署、上下文老化、内部探针假验收七类失效；十条核心机制即由这些现场问题沉淀而来。",
         ):
             self.assertIn(sentence, text)
