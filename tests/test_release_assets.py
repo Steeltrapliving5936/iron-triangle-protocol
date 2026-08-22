@@ -593,9 +593,6 @@ class AssetToolingTests(unittest.TestCase):
             self.assertIn(asset, readme)
 
 
-if __name__ == "__main__":
-    unittest.main()
-
 
 class GitMetadataGateTests(unittest.TestCase):
     """Synthetic commit/tag canaries: generic maintainer identity passes,
@@ -729,3 +726,6 @@ class WindowsPortabilityRegressionTests(unittest.TestCase):
         report = validate_skill.validate_skill(escape)
         self.assertFalse(report["ok"])
         self.assertTrue(any("escapes" in e or "does not resolve" in e for e in report["errors"]))
+
+if __name__ == "__main__":
+    unittest.main()
