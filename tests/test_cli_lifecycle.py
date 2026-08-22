@@ -59,7 +59,7 @@ class CliLifecycleTests(unittest.TestCase):
         result = self.cli("version")
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["tool_version"], "0.3.0-rc.1")
+        self.assertEqual(payload["tool_version"], "0.3.1")
         self.assertEqual(payload["config_schema_version"], 2)
 
     def test_install_dry_run_renders_plan_without_system_contact(self):

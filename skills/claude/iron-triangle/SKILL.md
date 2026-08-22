@@ -12,7 +12,7 @@ license: MIT
 compatibility: Any agent runtime; durable unattended watching requires an OS service supervisor.
 metadata:
   protocol: iron-triangle
-  version: 0.3.0-rc.1
+  version: 0.3.1
 ---
 <!-- GENERATED from skills/iron-triangle by scripts/build_skills.py; do not edit directly. -->
 

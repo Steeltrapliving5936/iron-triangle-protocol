@@ -510,7 +510,7 @@ def social_svg() -> str:
                 f'font-family="Menlo, monospace" font-size="14" fill="{color}">{xml(piece)}</text>'
             )
     parts += [
-        '<text x="72" y="596" font-family="Menlo, monospace" font-size="16" fill="#8b949e">protocol 1.0-draft · tool 0.3.0-rc.1 · MIT · evidence: one four-day field run</text>',
+        '<text x="72" y="596" font-family="Menlo, monospace" font-size="16" fill="#8b949e">protocol 1.0-draft · tool 0.3.1 · MIT · evidence: one four-day field run</text>',
         "</svg>",
     ]
     return "\n".join(parts)

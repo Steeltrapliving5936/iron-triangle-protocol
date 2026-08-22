@@ -26,5 +26,5 @@
 <text x="880" y="288" xml:space="preserve" font-family="Menlo, monospace" font-size="14" fill="#f0f6fc">ron_triangle/sanitizer.py .</text>
 <text x="880" y="314" xml:space="preserve" font-family="Menlo, monospace" font-size="14" fill="#56d364">sanitization scan passed: 0 hits across all </text>
 <text x="880" y="332" xml:space="preserve" font-family="Menlo, monospace" font-size="14" fill="#56d364">rules</text>
-<text x="72" y="596" font-family="Menlo, monospace" font-size="16" fill="#8b949e">protocol 1.0-draft · tool 0.3.0-rc.1 · MIT · evidence: one four-day field run</text>
+<text x="72" y="596" font-family="Menlo, monospace" font-size="16" fill="#8b949e">protocol 1.0-draft · tool 0.3.1 · MIT · evidence: one four-day field run</text>
 </svg>

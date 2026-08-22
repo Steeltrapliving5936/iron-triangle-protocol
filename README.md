@@ -8,7 +8,7 @@
 
 **长任务里，执行模型会宣称未经验证的成功，或者悄悄漂移——而聊天记录是唯一剩下的证据。** 铁三角协议把裁决、执行、验证拆成三个可插拔的模型角色，再用只追加的纸面协议（台账、收据、红线、预裁决）构成不会随窗口丢失的“第四成员”。没有可复现收据的“完成”不允许出厂。
 
-- Protocol version: `1.0-draft` · Tool version: `0.3.0-rc.1` · License: MIT
+- Protocol version: `1.0-draft` · Tool version: `0.3.1` · License: MIT
 - Evidence base: one four-day production field run. **No platform beyond the session-API runtime below is field-verified yet** — see the [support matrix](#support-matrix--支持矩阵) before relying on any adapter.
 - 证据基础为一次四天实战。除下述会话 API 运行时外，其他适配路径均未经实战验证，依赖前先看[支持矩阵](#support-matrix--支持矩阵)。
 
@@ -161,8 +161,8 @@ A receipt-backed case study of that run — measured role costs, the end-to-end 
 
 ## Status
 
-- Protocol `1.0-draft`; tool `0.3.0-rc.1` (release candidate: full CI matrix, fresh-contributor smokes, tag CI all green remotely; prerelease [`v0.3.0-rc.1`](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.0-rc.1) published); evidence base: one four-day field run.
+- Protocol `1.0-draft`; tool `0.3.1` (latest stable: [`v0.3.1`](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.1) — a patch that fixes the released-version identity inconsistency where the `v0.3.0` tag still self-reported `0.3.0-rc.1` in its README, runtime, skills, and assets; see [CHANGELOG](CHANGELOG.md). The published `v0.3.0` and `v0.3.0-rc.1` tags/releases are preserved unchanged as history; the earlier full-CI-matrix release-candidate receipts remain linked from the changelog); evidence base: one four-day field run.
 - Public release gate status: [`docs/release-gates.md`](docs/release-gates.md).
 - License: MIT. See [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md).
 
-当前状态：协议 `1.0-draft`、工具 `0.3.0-rc.1`（发布候选：完整 CI 矩阵、贡献者冒烟与标签 CI 已在远端全绿；预发布 [`v0.3.0-rc.1`](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.0-rc.1) 已发布）；证据基础为一次四天实战。发布门槛状态见 release-gates 文档；许可证 MIT。
+当前状态：协议 `1.0-draft`、工具 `0.3.1`（最新稳定版 [`v0.3.1`](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.1)：修复 `v0.3.0` 标签内 README、运行时、技能元数据与演示资产仍自报 `0.3.0-rc.1` 的发布身份不一致，见 [CHANGELOG](CHANGELOG.md)；已发布的 `v0.3.0` 与 `v0.3.0-rc.1` 标签按历史原样保留，此前的完整 CI 矩阵候选收据仍由变更日志链接）；证据基础为一次四天实战。发布门槛状态见 release-gates 文档；许可证 MIT。

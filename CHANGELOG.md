@@ -2,7 +2,9 @@
 
 All notable changes to the Iron Triangle protocol tooling are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
-## [Unreleased]
+## [0.3.1] - 2026-08-23
+
+Patch release fixing the released-version identity inconsistency of `v0.3.0`: the stable tag was cut from a tree whose runtime `TOOL_VERSION`, README status lines, skill manifests, recorded demo, and social preview still self-identified as `0.3.0-rc.1`, with the changes below still filed under *Unreleased*. History stays honest — the published `v0.3.0` and `v0.3.0-rc.1` tags/releases are preserved unchanged. This release unifies every current-state version source to `0.3.1`, dates these entries properly, and regenerates the derived skills and assets through their generators (no manual drift). No normative protocol change.
 
 ### Added
 
@@ -11,6 +13,7 @@ All notable changes to the Iron Triangle protocol tooling are documented here. F
 
 ### Fixed
 
+- Released-version identity reconciliation: all current-state sources now read `0.3.1` — runtime `TOOL_VERSION`, README status lines (EN/中文), the five skill manifests (canonical source + generator output), the CLI-lifecycle test expectation, and the regenerated terminal demo recording and social preview.
 - `resume --ack-prompt-id` now reconciles the durable review round with the contract that was actually sent. Previously, when a reviewer dispatch landed in transport-unknown, the queued round bump was dropped and the manual ack restored only delivery bookkeeping — so the reviewer's legal per-contract decision (`decide --review-round N+1`) failed round validation forever. The dispatched round is persisted in `pending_dispatch` (`contract_review_round`) and restored on ack; legacy pending records without the field gain no guessed bump. Covered by a regression test that reproduces the failure and decides the recovered run to closure.
 - README no longer describes `examples/night-autonomy-contract.md` as a filled sample; the file is and declares itself a template (`Status: template`).
 
