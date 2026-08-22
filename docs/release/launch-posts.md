@@ -18,7 +18,7 @@ The protocol exists because of how that run broke. Seven failure classes showed 
 
 The repo ships the protocol spec (v1.0-draft), a stdlib-only Python bridge with honest delivery states (accepted / rejected / unknown — a transport timeout escalates, it never blind-retries), generated agent skills for Codex / Claude Code / Kimi / Cursor, and a security canary that plants sanitizer-rule fixtures to prove the scanner actually trips.
 
-Honest limits: one field run is the whole evidence base; remote CI hasn't had its first run yet; most platform adapters are marked experimental. The case study separates what the receipts prove from what remains explicitly open: [case study](https://github.com/<owner>/iron-triangle-protocol/blob/main/docs/case-study-founding-field-run.md).
+Honest limits: one field run is the whole evidence base; the CI matrix is green but the project is one release old; most platform adapters are marked experimental. The case study separates what the receipts prove from what remains explicitly open: [case study](https://github.com/<owner>/iron-triangle-protocol/blob/main/docs/case-study-founding-field-run.md).
 
 Repo: https://github.com/<owner>/iron-triangle-protocol
 

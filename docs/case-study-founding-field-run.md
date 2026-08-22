@@ -80,7 +80,7 @@ The run operated under explicit role budgets; the protocol keeps them as targets
 
 ## 6. What the tooling inherited
 
-Everything above is protocol text; this repository additionally ships the tooling the run relied on, in verified form where the [release gates](release-gates.md) say so: the session-API bridge with honest delivery states (`accepted` / `rejected` / `unknown`) and crash resume, the fail-closed policy state machine, supervised relays, the sanitization scanner with its security canary, and generated skills for four platforms ([support matrix](../README.md#support-matrix--支持矩阵), local receipts in [release gates](release-gates.md)). Remote CI has not executed yet; per the support-matrix rule, local checks are never presented as remote runs.
+Everything above is protocol text; this repository additionally ships the tooling the run relied on, in verified form where the [release gates](release-gates.md) say so: the session-API bridge with honest delivery states (`accepted` / `rejected` / `unknown`) and crash resume, the fail-closed policy state machine, supervised relays, the sanitization scanner with its security canary, and generated skills for four platforms ([support matrix](../README.md#support-matrix--支持矩阵)). The full CI matrix now runs green remotely (receipt runs linked from the support matrix); local checks are still never presented as remote runs.
 
 ## 7. Evidence status and open questions
 

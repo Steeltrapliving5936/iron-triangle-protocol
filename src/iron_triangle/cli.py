@@ -28,23 +28,29 @@ from .util import append_jsonl, atomic_json, exclusive_lock, expand_path, utc_no
 
 
 def _print_stderr(text: str) -> None:
-    try:
-        print(text, file=sys.stderr)
-    except UnicodeEncodeError:
-        sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-        print(text, file=sys.stderr)
+    _utf8_safe_write(sys.stderr, text)
+
+
+def _utf8_safe_write(stream: Any, text: str) -> None:
+    """Write text to a stream whose codepage may not cover CJK narration.
+
+    Windows consoles default to legacy codepages (cp1252 and friends); when
+    the stream's encoding cannot represent the text, reconfigure it to UTF-8
+    before writing so nothing is partially emitted or lost."""
+    encoding = (getattr(stream, "encoding", None) or "utf-8").replace("-", "").lower()
+    if encoding != "utf8":
+        try:
+            "\u4e2d\u6587".encode(stream.encoding)  # narration may contain CJK
+        except UnicodeEncodeError:
+            reconfigure = getattr(stream, "reconfigure", None)
+            if reconfigure:
+                reconfigure(encoding="utf-8")
+    stream.write(text + "\n")
+    stream.flush()
 
 
 def _print_json(value: Any) -> None:
-    text = json.dumps(value, ensure_ascii=False, indent=2)
-    try:
-        print(text)
-    except UnicodeEncodeError:
-        # Windows consoles default to a legacy codepage that cannot encode
-        # CJK narration; the CLI's output contract is UTF-8, so reconfigure
-        # the stream and retry once.
-        sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[union-attr]
-        print(text)
+    _utf8_safe_write(sys.stdout, json.dumps(value, ensure_ascii=False, indent=2))
 
 
 # --- read-only inspection -----------------------------------------------------

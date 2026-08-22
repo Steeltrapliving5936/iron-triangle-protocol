@@ -31,20 +31,15 @@ Deliberately excluded: `agent-framework` (this is a protocol, not a framework), 
 
 Upload path (remote, human-executed): repo → Settings → Social preview → upload `docs/assets/social-preview.png`. GitHub caches previews; re-upload replaces it.
 
-## Post-creation checklist (remote, one authorization away)
+## Publication checklist — execution record (2026-08-22)
 
-The public history is the local orphan branch `public-main` (single genesis commit, sanitizer-clean, no internal ancestors). The internal `main` and feature branches are **not** publishable history and must never leave this machine.
+The public history is the orphan branch `public-main` pushed to `he62621-oss/iron-triangle-protocol` (public, default branch `main`, sanitizer-clean, no internal ancestors). The internal `main` and feature branches are **not** publishable history and must never leave this machine.
 
-1. Create the repository as `iron-triangle-protocol`; expected canonical URL used by launch posts: `https://github.com/<owner>/iron-triangle-protocol` (substitute the real owner at creation time).
-2. Apply description + topics above.
-3. Upload the social preview.
-4. Push **only** the public branch, explicitly, with tags excluded:
+1. ✅ Repository created as public `he62621-oss/iron-triangle-protocol` (was verified absent before creation); canonical URL: `https://github.com/he62621-oss/iron-triangle-protocol`.
+2. ✅ Description + topics applied exactly as above.
+3. ⬜ **Social preview not uploaded yet** — maintainer UI action: Settings → Social preview → upload `docs/assets/social-preview.png`. GitHub caches previews; re-upload replaces it.
+4. ✅ Public branch pushed via the explicit refspec `git push --no-tags origin public-main:main`. Forbidden forever: `--mirror`, `--all`, pushing `main`, `feature/*`, any other ref, or any refspec not exactly `public-main:main`. Tags are only ever pushed from an isolated public clone (never from this repository, whose private history must not leak through tag objects).
+5. ✅ Remote release checklist executed — first all-green matrix run [32556149605](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32556149605), tagged run [32557566761](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32557566761), prerelease `v0.3.0-rc.1` published; see [`docs/release-gates.md`](../release-gates.md).
+6. ⬜ Private-report canary drill — pending a non-owner reporter account (the official endpoint returns 403 for the owner by design); see [`docs/release-gates.md`](../release-gates.md) Gate 1.
 
-   ```bash
-   git push --no-tags <remote-url> public-main:main
-   ```
-
-   Forbidden forever: `--mirror`, `--all`, pushing `main`, `feature/*`, any other ref, or any refspec not exactly `public-main:main`. Tags must never be pushed from this repository (internal tags exist on private history).
-5. Only then execute the remote release checklist in [`docs/release-gates.md`](../release-gates.md) (tagging/CI steps there apply to the public repository's own history once it exists remotely).
-
-Until those steps are authorized and executed, this repository remains a local release candidate.
+HN/Reddit/X drafts in [`launch-posts.md`](launch-posts.md) remain **unpublished drafts**.

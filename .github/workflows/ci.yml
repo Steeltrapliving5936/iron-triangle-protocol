@@ -64,3 +64,16 @@ jobs:
           python3 scripts/build_skills.py --check
           END=$(date +%s)
           echo "fresh-contributor smoke wall time: $((END-START))s on $RUNNER_OS"
+  metadata-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Git object metadata gate (authors, committers, annotated-tag taggers)
+        run: |
+          git fetch --tags --force origin
+          python3 scripts/check_git_metadata.py --all --tags

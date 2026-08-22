@@ -7,15 +7,15 @@ Two gates exist: the public-release gate for the tooling, and the second-field-r
 All of the following must hold with receipts in the release ledger:
 
 - [x] The founding bridge test suite passes unchanged (`python3 -m unittest tests.test_bridge`).
-- [x] Every new suite passes on the maintainer machine and the CI matrix is defined in-tree (`.github/workflows/ci.yml`) — CI has not executed remotely yet; first remote run is a release-blocking receipt.
+- [x] Every new suite passes on the maintainer machine and the CI matrix is defined in-tree (`.github/workflows/ci.yml`) — first remote runs completed 2026-08-22; the all-green matrix receipt is run [32556149605](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32556149605) (the very first run [32555578161](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32555578161) failed on Windows and surfaced two real portability defects, fixed in `956ce83`).
 - [x] One tagged release built from a clean clone passes: full unittest discovery, sanitization scan zero hits, skill validator pass on all five skill directories, generator `--check` clean.
-  - Local leg done 2026-08-22 from an *untagged* local clean clone; the public tag leg is executed in the isolated clone of the published `main` before tagging — see receipts below.
+  - Done 2026-08-22: the tag was cut in a `--no-local --single-branch` clone of the published `main` (`52b7eb5`) after running the full gate set there (172 tests, bridge suite, sanitizer 0, security canary, validate 5/5, generator check).
 - [x] A fresh-contributor smoke test: 60-second quick start executed verbatim on macOS plus at least one Linux.
   - Done 2026-08-22 as remote CI jobs `fresh-contributor-smoke` on ubuntu-latest and macos-latest (full quickstart path: tests, isolated-HOME config/doctor, sanitizer, five-skill validation, generator check, wall time printed) — run [32556149605](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32556149605).
 - [x] CLI lifecycle roundtrip proven in an isolated environment without touching any real system service (`tests/test_cli_lifecycle.py`).
 - [x] Private-config preflight still usable against the live session API (receipt recorded in the v0.2 execution ledger).
 - [ ] Security policy published with a private reporting channel that has been exercised once (canary report).
-  - Private vulnerability reporting is **enabled** and read back via the REST endpoint (`{"enabled": true}`); GitHub provides no REST/GraphQL API for creating private vulnerability reports, so the one-time canary drill is a maintainer UI action: file a canary report through Security → "Report a vulnerability", confirm maintainer read-back, close it immediately, keep identifiers in the private ledger.
+  - Private vulnerability reporting is **enabled** and read back via the REST endpoint (`{"enabled": true}`); GitHub's official private-report endpoint exists: POST /repos/{owner}/{repo}/security-advisories/reports (docs.github.com/en/rest/security-advisories/repository-advisories#privately-report-a-security-vulnerability); an owner-account call returns 403 by design (reproduced 2026-08-22), so the one-time canary drill requires a non-owner reporter account to file via that endpoint or the Security tab → "Report a vulnerability", then maintainer read-back and immediate close, with identifiers kept in the private ledger. Not checked yet.
 - [x] README support matrix reviewed so no claim says "verified" without a linked receipt (reviewed 2026-08-22: **awaiting-remote** retired for remote CI after first green runs; every verified row links its evidence).
 
 Release is **blocked**, not merely discouraged, while any box above is open.
@@ -39,10 +39,20 @@ Executed against repository `he62621-oss/iron-triangle-protocol` (public), creat
 1. First push of the public genesis history: commit `edcb9f5` → run [32555578161](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32555578161): ubuntu/macos × 3.9/3.12 + both smokes green; windows ×2 failed on two real portability defects (legacy-codepage JSON printing, `os.getuid()` in launchd plan rendering) — fixed in `956ce83`.
 2. Run [32555851467](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32555851467) @ `956ce83`: only remaining failure was the skill validator's POSIX-separator escape check — fixed in `440dece`.
 3. Run [32556149605](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32556149605) @ `440dece`: **all eight jobs green** (ubuntu/macos/windows × Python 3.9/3.12 + Ubuntu/macOS fresh-contributor smokes). This is the first fully green remote CI receipt.
-4. Private vulnerability reporting enabled (`{"enabled": true}` read back); one-time canary drill pending as a maintainer UI action (no REST API exists for report creation).
-5. Tag/prerelease receipts: appended after tagging from an isolated clone of the published `main`.
+4. Private vulnerability reporting enabled (`{"enabled": true}` read back); one-time canary drill pending a non-owner reporter account: the official endpoint POST /repos/{owner}/{repo}/security-advisories/reports returns 403 for the owner by design (reproduced 2026-08-22).
+5. Tag/prerelease receipts: annotated tag `v0.3.0-rc.1` created in a `--no-local` clone of the published `main` and pushed alone; tag CI run [32557566761](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32557566761) green @ `52b7eb5`; prerelease published at [releases/tag/v0.3.0-rc.1](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.0-rc.1). Incident on the way: the first tag object leaked a real person name in its tagger field (the file sanitizer does not scan git objects); it was deleted and re-created with the generic maintainer identity, and a dedicated git-object metadata gate now covers this class.
 
-Until then, local static workflow checks must never be presented as remote CI runs.
+The remote runs above are the receipts; local static workflow checks must still not be presented as remote CI runs.
+
+### Git-object metadata gate
+
+The file sanitizer only scans working-tree contents; commit author/committer identities and annotated-tag tagger identities live in git objects and leaked once through a tag. [`scripts/check_git_metadata.py`](../scripts/check_git_metadata.py) closes that blind spot: it parses every commit in the given range plus all annotated tags and applies the same desensitization rules to each identity field, exiting non-zero with a located report on any hit. It runs as the `metadata-gate` CI job (full history and tags) and locally before any push:
+
+```bash
+python3 scripts/check_git_metadata.py origin/main..public-main --tags
+```
+
+Regression canaries in `tests/test_release_assets.py` prove a generic maintainer identity passes while a personal name or `.local`-domain email fails.
 
 ## Gate 2 — second field run (protocol evolution)
 

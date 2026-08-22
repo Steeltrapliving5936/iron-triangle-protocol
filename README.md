@@ -95,7 +95,7 @@ Statuses: **verified** = exercised in the founding field run or by this reposito
 | macOS launchd supervised relay (`install`/`uninstall`) | **verified (macOS)** | field run; dry-run plans tested cross-platform |
 | Policy state machine fail-closed set (duplicate events, truncation, unknown delivery, restart) | **verified** | `tests/test_policy.py`, `tests/test_conformance.py` |
 | Arbiter closure briefing (six side-by-side elements; continuation-authority boundary) as a hard skill requirement | **verified** | canonical skill §Arbiter closure briefing + briefing template; asserted across all five skills by `tests/test_skill.py` |
-| Remote CI execution (GitHub Actions: ubuntu/macos/windows × Python 3.9/3.12) | **verified** | first runs green on all eight jobs incl. Windows: run [32556149605](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32556149605) and [32555578161](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32555578161); workflow pinned by `tests/test_release_gate.py` |
+| Remote CI execution (GitHub Actions: ubuntu/macos/windows × Python 3.9/3.12) | **verified** | first all-green run: [32556149605](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32556149605); latest `main` run green: [32557192924](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32557192924); tagged-run green: [32557566761](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32557566761); the first-ever run [32555578161](https://github.com/he62621-oss/iron-triangle-protocol/actions/runs/32555578161) **failed** on Windows and is retained as the discovery receipt for two real portability defects (both fixed); workflow pinned by `tests/test_release_gate.py` |
 | Fresh-contributor smoke (Ubuntu/macOS, zero-install quickstart path) | **verified** | `fresh-contributor-smoke` jobs green in the same runs; wall time printed per job |
 | Linux systemd unit generation + command plan | **experimental** | rendered output and dry-run plans tested in `tests/test_supervisor.py`; never run against systemd |
 | Windows scheduled-task plan | **experimental** | generated `schtasks` command tested in `tests/test_supervisor.py`; never run against Task Scheduler |
@@ -128,7 +128,7 @@ A receipt-backed case study of that run — measured role costs, the end-to-end 
 ## Roadmap / 路线图
 
 - v0.4 (planned — listed as a roadmap item only, **not implemented in this release**): `init` install wizard. One command that writes a schema-validated private runtime config outside the repo, probes the configured adapter, offers to install the platform skill, and prints the exact follow-up commands. v0.4 计划提供 `init` 安装向导：一条命令在仓库外生成通过 schema 校验的私有运行配置、探测适配器、可选安装平台技能并输出后续命令。本版本仅列入路线图，未实现。
-- Remote CI first run remains the release-blocking receipt for the current `0.3.0-rc.1` line ([release gates](docs/release-gates.md)). 远程 CI 首跑仍是当前候选线的阻断性发布凭据。
+- Remote CI first runs are done and green (see the support matrix); remaining release follow-ups are maintainer UI actions only — social preview upload and a non-owner private-report canary ([release gates](docs/release-gates.md)). 远程 CI 首跑已完成且全绿（见支持矩阵）；剩余发布跟进仅为主控 UI 动作——社交预览上传与非所有者私密报告 canary。
 
 ## Repository map / 仓库结构
 
@@ -161,8 +161,8 @@ A receipt-backed case study of that run — measured role costs, the end-to-end 
 
 ## Status
 
-- Protocol `1.0-draft`; tool `0.3.0-rc.1` (release candidate: the full CI matrix and fresh-contributor smokes run green remotely; tagged prerelease pending); evidence base: one four-day field run.
+- Protocol `1.0-draft`; tool `0.3.0-rc.1` (release candidate: full CI matrix, fresh-contributor smokes, tag CI all green remotely; prerelease [`v0.3.0-rc.1`](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.0-rc.1) published); evidence base: one four-day field run.
 - Public release gate status: [`docs/release-gates.md`](docs/release-gates.md).
 - License: MIT. See [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md).
 
-当前状态：协议 `1.0-draft`、工具 `0.3.0-rc.1`（发布候选：完整 CI 矩阵与贡献者冒烟已在远端全绿；标签预发布待完成）；证据基础为一次四天实战。发布门槛状态见 release-gates 文档；许可证 MIT。
+当前状态：协议 `1.0-draft`、工具 `0.3.0-rc.1`（发布候选：完整 CI 矩阵、贡献者冒烟与标签 CI 已在远端全绿；预发布 [`v0.3.0-rc.1`](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.0-rc.1) 已发布）；证据基础为一次四天实战。发布门槛状态见 release-gates 文档；许可证 MIT。

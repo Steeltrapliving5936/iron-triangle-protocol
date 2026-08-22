@@ -8,8 +8,14 @@ the text/content commit, because recording needs a clean tree).
 from __future__ import annotations
 
 import json
+import os
+import pathlib
 import re
+import shutil
 import struct
+import subprocess
+import sys
+import tempfile
 import unittest
 
 import _helpers  # noqa: F401  (sys.path bootstrap)
@@ -589,3 +595,135 @@ class AssetToolingTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class GitMetadataGateTests(unittest.TestCase):
+    """Synthetic commit/tag canaries: generic maintainer identity passes,
+    personal names and local-domain emails fail with a located report."""
+
+    def _make_repo(self, commits, tags=()):
+        import subprocess
+
+        base = pathlib.Path(tempfile.mkdtemp(prefix="it-metagate-"))
+        env = {**os.environ,
+               "GIT_AUTHOR_NAME": commits[0]["name"], "GIT_AUTHOR_EMAIL": commits[0]["email"],
+               "GIT_COMMITTER_NAME": commits[0]["name"], "GIT_COMMITTER_EMAIL": commits[0]["email"]}
+        run = lambda *a: subprocess.run(["git", *a], cwd=base, capture_output=True, text=True, check=True, env=env)
+        run("init", "-q", "-b", "main")
+        (base / "f.txt").write_text("x\n", encoding="utf-8")
+        run("add", "f.txt")
+        for index, entry in enumerate(commits):
+            if index:
+                env = {**env,
+                       "GIT_AUTHOR_NAME": entry["name"], "GIT_AUTHOR_EMAIL": entry["email"],
+                       "GIT_COMMITTER_NAME": entry["name"], "GIT_COMMITTER_EMAIL": entry["email"]}
+            (base / "f.txt").write_text(f"x {index}\n", encoding="utf-8")
+            run("commit", "-aqm", f"c{index}")
+        for tag in tags:
+            env = {**env,
+                   "GIT_COMMITTER_NAME": tag["tagger_name"], "GIT_COMMITTER_EMAIL": tag["tagger_email"]}
+            run("tag", "-a", tag["name"], "-m", tag["message"])
+        return base
+
+    def test_generic_identity_passes(self):
+        script = ROOT / "scripts" / "check_git_metadata.py"
+        repo = self._make_repo(
+            [{"name": "Iron Triangle Protocol", "email": "maintainers@users.noreply.github.com"}],
+            tags=[{"name": "v1", "message": "release",
+                   "tagger_name": "Iron Triangle Protocol",
+                   "tagger_email": "maintainers@users.noreply.github.com"}],
+        )
+        try:
+            result = subprocess.run([sys.executable, str(script), "--all", "--tags"], cwd=repo, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        finally:
+            shutil.rmtree(repo, ignore_errors=True)
+
+    def test_personal_name_and_local_domain_fail(self):
+        script = ROOT / "scripts" / "check_git_metadata.py"
+        person = "T" + "ony"
+        domain = "dev@" + "box" + ".lo" + "cal"
+        repo = self._make_repo(
+            [{"name": person, "email": domain}],
+            tags=[{"name": "v1", "message": "leak",
+                   "tagger_name": person, "tagger_email": domain}],
+        )
+        try:
+            result = subprocess.run([sys.executable, str(script), "--all", "--tags"], cwd=repo, capture_output=True, text=True)
+            self.assertNotEqual(result.returncode, 0)
+            combined = result.stdout + result.stderr
+            self.assertIn("git metadata gate FAILED", combined)
+            self.assertIn(person, combined)
+            self.assertIn(".lo" + "cal", combined)
+            self.assertIn("author_name", combined)
+            self.assertIn("tagger_name", combined)
+        finally:
+            shutil.rmtree(repo, ignore_errors=True)
+
+
+class WindowsPortabilityRegressionTests(unittest.TestCase):
+    """Local reproxies for the three defects the first remote Windows run
+    exposed — each must be triggerable without a Windows runner."""
+
+    def test_chinese_json_output_survives_cp1252_stream(self):
+        import io
+        from unittest import mock
+
+        from iron_triangle import cli
+
+        payload = {"title": "[铁三角·执行] 实现有界任务切片。"}
+        out_buf = io.BytesIO()
+        fake_out = io.TextIOWrapper(out_buf, encoding="cp1252")
+        with mock.patch("sys.stdout", fake_out):
+            cli._print_json(payload)  # must reconfigure and retry, not raise
+        text = out_buf.getvalue().decode("utf-8")
+        self.assertIn("铁三角·执行", text)
+
+        err_buf = io.BytesIO()
+        fake_err = io.TextIOWrapper(err_buf, encoding="cp1252")
+        with mock.patch("sys.stderr", fake_err):
+            cli._print_stderr('{"ok": false, "error": "中文错误"}')
+        self.assertIn("中文错误".encode("utf-8"), err_buf.getvalue())
+
+    def test_launchd_plan_renders_without_getuid(self):
+        from unittest import mock
+
+        from iron_triangle import supervisor
+
+        config = {"supervisor": {"label": "io.iron-triangle.bridge"},
+                  "adapters": {"kimi-code": {}}, "state_dir": "/tmp/x"}
+        defn = supervisor.ServiceDefinition(
+            label="io.iron-triangle.bridge", program=["python3", "-m", "iron_triangle"],
+            state_dir="/tmp/x", log_out="/tmp/x/out.log", log_err="/tmp/x/err.log")
+        with mock.patch.object(os, "getuid", None):
+            plan = supervisor.plan_install("launchd", config, defn)
+        flattened = " ".join(part for cmd in plan["commands"] for part in cmd)
+        self.assertIn("gui/501", flattened)
+
+    def test_skill_containment_is_separator_agnostic(self):
+        from pathlib import Path, PureWindowsPath
+
+        import validate_skill
+
+        # semantic guard: component-based containment holds where a string
+        # prefix check with "/" fails on backslash paths
+        child = PureWindowsPath("D:/a/repo/skills/iron-triangle/references/workflow.md")
+        base = PureWindowsPath("D:/a/repo/skills/iron-triangle")
+        self.assertTrue(child.is_relative_to(base))
+        self.assertFalse(str(child).startswith(str(base) + "/"))
+
+        real_dir = pathlib.Path(tempfile.mkdtemp(prefix="it-skillval-")) / "demo-skill"
+        (real_dir / "references").mkdir(parents=True)
+        (real_dir / "SKILL.md").write_text(
+            "---\nname: demo-skill\ndescription: x\n---\nSee [r](references/workflow.md).", encoding="utf-8")
+        (real_dir / "references" / "workflow.md").write_text("ok", encoding="utf-8")
+        report = validate_skill.validate_skill(real_dir)
+        self.assertTrue(report["ok"], report["errors"])
+
+        escape = pathlib.Path(tempfile.mkdtemp(prefix="it-skillval2-")) / "demo-skill"
+        escape.mkdir(parents=True)
+        (escape / "SKILL.md").write_text(
+            "---\nname: demo-skill\ndescription: x\n---\nSee [e](../../../../outside.md).", encoding="utf-8")
+        report = validate_skill.validate_skill(escape)
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("escapes" in e or "does not resolve" in e for e in report["errors"]))
