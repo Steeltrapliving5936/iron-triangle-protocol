@@ -1,0 +1,184 @@
+{
+  "schema": "iron-triangle/founding-field-run-receipt",
+  "version": 1,
+  "title": "Founding field run — cost structure and end-to-end incident receipt",
+  "run_window": {
+    "approximate_hours": 92,
+    "hours_source": "arbiter closing summary; carried as an approximation, not a measured value",
+    "calendar_days_with_recorded_activity": [
+      "2026-08-17",
+      "2026-08-18",
+      "2026-08-19",
+      "2026-08-20",
+      "2026-08-21",
+      "2026-08-22"
+    ],
+    "calendar_days_note": "calendar dates on which some role produced receipts (UTC); coverage differs per role — the executor stream starts 2026-08-17 and all streams end by 2026-08-22 — so these are activity dates, not proof of the run’s precise start/end",
+    "precise_start_end": "open question",
+    "roles": "three pluggable model slots (interactive editor agent as arbiter, high-throughput agent runtime as executor, independent reviewer session)"
+  },
+  "activity_spans": {
+    "definition": "first-to-last receipt timestamp differences per role, computed over strict JSONL-parsed envelope.type==turn.step.completed events within each anchored prefix; these bound each role's recorded activity, not the task's wall-clock start/end",
+    "reviewer_in_window": {
+      "first_receipt": "2026-08-18T10:29:59.777Z",
+      "last_in_window_receipt": "2026-08-22T02:48:53.080Z",
+      "span_hours": 88.31
+    },
+    "executor_full_stream": {
+      "first_receipt": "2026-08-17T21:20:12.477Z",
+      "last_receipt": "2026-08-22T02:52:28.193Z",
+      "span_hours": 101.54
+    },
+    "interpretation": "role spans differ because sessions start and end at different moments; no single source proves the task's absolute start/end"
+  },
+  "metric_definitions": {
+    "native_total": "sum of input tokens plus output tokens for completed turns; provider cache-read/cache-write counters are diagnostic subcounters of input and are never added on top of it",
+    "arbiter_source": "editor stop-hook completion receipts; each carries input_tokens, output_tokens, cache_read_tokens, cache_write_tokens",
+    "runtime_role_source": "session-API event stream turn.step.completed usage records carrying inputOther, inputCacheRead, output (inputCacheCreation was zero throughout)",
+    "reviewer_window_note": "window = the first 1,262 real turn.step.completed events in stream order (envelope.type parsed per JSONL line; substring/grep counting is not used); the 9 appended post-run steps are events 1263–1271 and are excluded and reported separately"
+  },
+  "roles": {
+    "arbiter": {
+      "completed_stops": 68,
+      "input_tokens": 33780814,
+      "output_tokens": 279109,
+      "native_total": 34059923
+    },
+    "executor": {
+      "completed_steps_in_window": 3925,
+      "input_other": 39366422,
+      "input_cache_read": 893325568,
+      "output_tokens": 1489214,
+      "native_total": 934181204
+    },
+    "reviewer": {
+      "completed_steps_in_window": 1262,
+      "input_other": 16205378,
+      "input_cache_read": 348130795,
+      "output_tokens": 579834,
+      "native_total": 364916007,
+      "full_stream_total_including_post_run_steps": 370367989,
+      "excluded_post_run_steps": 9,
+      "excluded_post_run_total": 5451982
+    }
+  },
+  "totals": {
+    "grand_total_native_tokens": 1333157134,
+    "formula": "arbiter.native_total + executor.native_total + reviewer.native_total"
+  },
+  "shares_pct_of_grand_total": {
+    "definition": "role.native_total / totals.grand_total_native_tokens * 100, rounded to six decimals",
+    "arbiter": 2.554832,
+    "executor": 70.07285,
+    "reviewer": 27.372318,
+    "executor_plus_reviewer": 97.445168
+  },
+  "budget_target_check": {
+    "contracted_target": "<2% of total tokens for the arbiter (spec section 3.1)",
+    "measured_result": "2.554832%",
+    "verdict": "target missed by ~0.55 percentage points",
+    "protocol_significance": "the paper-trail honesty gate caught a would-be '<2% achieved' marketing claim before publication; the measured figure is published instead of the target"
+  },
+  "end_to_end_incident": {
+    "failure_class": "internal probe passes while user path fails (spec section 11, row 7)",
+    "observed": "service-layer retrieval answered correctly with 8/8 verified catalog heads surfaced, while the real user messaging channel returned nothing for the same questions",
+    "admission": "the arbiter recorded that acceptance had only exercised the service layer and not the real channel, classified the miss as a P0 incident, and ordered an end-to-end diagnosis",
+    "root_cause": "query-time full embedding: answering a question embedded all 4421 indexed surfaces first, extrapolating to about 45.6 seconds per query at scale",
+    "fix": "query-only embedding plus a prestored join, with index maintenance moved into worker cycles and a warmed index",
+    "independent_reverification": [
+      {
+        "probe": "roster question about recent hires",
+        "latency_seconds": 1.42,
+        "result": "all 8 catalog heads surfaced with complete names"
+      },
+      {
+        "probe": "optimization-progress question",
+        "latency_seconds": 1.13,
+        "result": "current-state entity parsed and latest-progress slot hit"
+      }
+    ],
+    "closure": "reviewer confirmed the P0 fix end to end against the real channel; closure ruling recorded in the run ledger (turn 173 review entry)"
+  },
+  "provenance": [
+    {
+      "artifact": "arbiter stop-hook event set",
+      "covers": [
+        "roles.arbiter"
+      ],
+      "anchor_kind": "event-set-digest",
+      "algorithm": "sha256 over newline-joined canonical JSON (keys sorted, ensure_ascii) of the 68 stop events carrying token counters, ordered by (generation_id, loop_count); replayable off-repository by rerunning the same extraction over the private hook logs",
+      "event_count": 68,
+      "canonical_digest": "cf06510532e18913b547898b017f031548417199bf9a087575ca71f38925cfc2"
+    },
+    {
+      "artifact": "arbiter conversation transcript",
+      "covers": [
+        "end_to_end_incident",
+        "roles.arbiter"
+      ],
+      "anchor_kind": "prefix-snapshot",
+      "algorithm": "sha256 of exactly the first byte_length bytes of the append-only source; the file may keep growing afterwards, so a longer file with a matching prefix validates this anchor — full-file hashes are deliberately not used for live sources",
+      "byte_length": 686757,
+      "prefix_sha256": "f90f018a8ed69bb1f6599c394fd97624e82fd8ee5f15c1212b9f6051c97f2e08",
+      "cutoff": "through the last turn_ended record at extraction time"
+    },
+    {
+      "artifact": "executor role event stream",
+      "covers": [
+        "roles.executor"
+      ],
+      "anchor_kind": "prefix-snapshot",
+      "algorithm": "sha256 of exactly the first byte_length bytes of the append-only source; see the transcript entry for why full-file hashes are not used",
+      "byte_length": 41129359,
+      "prefix_sha256": "1ce4feada45692dacccf005d3e15acad413a4b0a0d5d2d251298b284291d87ee",
+      "cutoff": {
+        "last_counted_event": "turn.step.completed",
+        "appended_bytes_after_cutoff_at_extraction": 1306,
+        "appended_note": "appended lines contained no turn.step.completed events; counted totals are unaffected"
+      }
+    },
+    {
+      "artifact": "reviewer role event stream",
+      "covers": [
+        "roles.reviewer",
+        "end_to_end_incident.independent_reverification"
+      ],
+      "anchor_kind": "prefix-snapshot",
+      "algorithm": "sha256 of exactly the first byte_length bytes of the source, parsed as JSONL one event per line; the file is append-only and may keep growing afterwards — a longer file whose matching prefix validates this anchor. Full-file hashes are deliberately not used for live sources.",
+      "byte_length": 7521373,
+      "prefix_sha256": "698fcec1e3b5f4c4a52f6632e4d484bd3d9809f364ef40c9a2a13eb4b3e33802",
+      "cutoff": {
+        "definition": "line ending the 1,262nd real turn.step.completed event (envelope.type parsed per JSONL line)",
+        "event_index": 1262,
+        "byte_offset": 7521373,
+        "last_counted_event_timestamp": "2026-08-22T02:48:53.080Z",
+        "cumulative_native_tokens_through_cutoff": 364916007,
+        "appended_bytes_after_cutoff_at_extraction": 45055,
+        "appended_note": "the appended segment holds the 9 post-run completion events (events 1263–1271) plus later non-counted records; counted totals bind to this prefix only"
+      }
+    },
+    {
+      "artifact": "run ledger (append-only review log)",
+      "covers": [
+        "end_to_end_incident.closure",
+        "run_window"
+      ],
+      "anchor_kind": "prefix-snapshot",
+      "algorithm": "sha256 of exactly the first byte_length bytes of the append-only source; see the transcript entry for why full-file hashes are not used",
+      "byte_length": 249612,
+      "prefix_sha256": "8315551363e98339f37dd7c4f3d8a48d4170c648194a6615f9c3d3e71479544c",
+      "cutoff": "through ledger line 1718 — the escalation entry rendered as case-study excerpt C"
+    }
+  ],
+  "desensitization_rules_applied": [
+    "no absolute local paths, conversation or session identifiers, memory identifiers, person names, company names, product names, or internal hostnames/ports appear in this file",
+    "model brands are replaced by generic role descriptions; the real user channel is named generically",
+    "verbatim ledger excerpts were semantically rewritten in English rather than quoted",
+    "source files remain private; these SHA-256 anchors are one-way and reveal no content"
+  ],
+  "open_questions": [
+    "the task's exact wall-clock start/end: role-level activity spans are receipt-bounded (activity_spans), but no single authorized source proves the absolute start/end behind the ~92-hour approximation",
+    "concrete instance receipts for failure classes 1-6 remain class-level public descriptions without published receipts",
+    "per-step latency distribution across the whole run is not part of this receipt"
+  ]
+}

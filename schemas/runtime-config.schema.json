@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://iron-triangle-protocol.invalid/schemas/runtime-config.schema.json",
+  "title": "Iron Triangle runtime configuration",
+  "description": "Private runtime configuration for the Iron Triangle bridge, schema version 2. Real endpoints, token paths, and bindings never belong in public repositories; this file is the versioned contract for the private config only.",
+  "type": "object",
+  "required": ["adapters", "state_dir", "schema_version"],
+  "additionalProperties": true,
+  "properties": {
+    "schema_version": {
+      "type": "integer",
+      "const": 2,
+      "description": "Config contract version. Version 1 (implicit) used flat launch_agent_* keys; `iron_triangle_bridge.py upgrade` migrates it in place with a backup."
+    },
+    "adapters": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "object",
+        "required": ["base_url", "token_file"],
+        "properties": {
+          "base_url": { "type": "string", "pattern": "^https?://" },
+          "token_file": { "type": "string", "minLength": 1 },
+          "event_dir": { "type": "string" },
+          "default_executor_model": { "type": "string" },
+          "default_executor_thinking": { "type": "string" },
+          "default_reviewer_model": { "type": "string" },
+          "default_reviewer_thinking": { "type": "string" },
+          "permission_mode": { "enum": ["manual", "auto", "yolo"] }
+        }
+      }
+    },
+    "state_dir": { "type": "string", "minLength": 1 },
+    "poll_interval_seconds": { "type": "integer", "minimum": 2, "default": 15 },
+    "notifications": { "type": "boolean", "default": true },
+    "language": {
+      "enum": ["en", "zh-CN", "ja", "ko", "de", "fr", "es", "pt", "it", "ru"],
+      "default": "en",
+      "description": "The run's unified response_language, resolved as explicit launch override > this key > dominant task script > en. Executor and reviewer inherit it jointly. Catalog-backed languages (en, zh-CN) localize static narration; other codes keep English machine fields while models reply in the requested language. Machine protocol fields and the NEEDS_ARBITER / ROUND_CLOSURE_PASS markers stay identical in every language."
+    },
+    "idle_wake_seconds": {
+      "type": [ "number", "null" ],
+      "exclusiveMinimum": 0,
+      "description": "Optional dual-idle heartbeat: wake the reviewer when both roles sit idle longer than this many seconds. Absent or null disables the heartbeat."
+    },
+    "supervisor": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "target": { "enum": ["auto", "launchd", "systemd", "windows-task"], "default": "auto" },
+        "label": { "type": "string", "minLength": 1 },
+        "path": { "type": "string", "description": "Explicit service-definition file path (launchd plist path on macOS)." }
+      }
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "schema_version": 2,
+  "adapters": {
+    "kimi-code": {
+      "base_url": "http://<session-api-host>:<port>/api/v1",
+      "token_file": "<path-to-local-token-file>",
+      "event_dir": "<path-to-session-event-stream-directory>",
+      "default_executor_model": "<executor-model-id>",
+      "default_executor_thinking": "<supported-effort>",
+      "default_reviewer_model": "<reviewer-model-id>",
+      "default_reviewer_thinking": "<supported-effort>",
+      "permission_mode": "auto"
+    }
+  },
+  "state_dir": "<private-state-directory>",
+  "poll_interval_seconds": 15,
+  "notifications": true,
+  "language": "en",
+  "idle_wake_seconds": null,
+  "supervisor": {
+    "target": "auto",
+    "label": "io.iron-triangle.bridge",
+    "path": "<user-service-definition-path>"
+  }
+}

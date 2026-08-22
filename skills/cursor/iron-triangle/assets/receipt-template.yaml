@@ -1,0 +1,12 @@
+receipt_id: <stable-id>
+claim: <falsifiable result>
+actor_role: executor
+scope: <authorized slice>
+observed_at: <UTC timestamp>
+checks:
+  - method: <test | hash | readback | end-to-end probe>
+    target: <generic target>
+    result: <pass | fail>
+    evidence_ref: <artifact reference>
+rollback_ref: <reference or not-applicable>
+known_reds: []

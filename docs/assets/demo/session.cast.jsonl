@@ -1,0 +1,84 @@
+{"type": "header", "recorded_from": "fresh clean clone of the release-candidate tree", "python": "/Library/Developer/CommandLineTools/usr/bin/python3", "commands": ["python3 -m unittest discover -s tests", "cp examples/runtime-config.example.json ~/my-runtime.json", "# ~/my-runtime.json: every <placeholder> replaced (demo-local values)", "python3 -m json.tool ~/my-runtime.json > /dev/null && echo \"config ready\"", "python3 scripts/iron_triangle_bridge.py --config ~/my-runtime.json doctor", "python3 src/iron_triangle/sanitizer.py .", "python3 scripts/build_skills.py --check"], "note": "output lines are captured bytes from real executions; prompt lines are rendered by the recorder"}
+{"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % python3 -m unittest discover -s tests"}
+{"type": "output", "t": 2.991, "text": "......................................................................................................ss.................s................................"}
+{"type": "output", "t": 2.991, "text": "----------------------------------------------------------------------"}
+{"type": "output", "t": 2.991, "text": "Ran 154 tests in 2.664s"}
+{"type": "output", "t": 2.991, "text": ""}
+{"type": "output", "t": 2.991, "text": "OK (skipped=3)"}
+{"type": "output", "t": 2.991, "text": "{"}
+{"type": "output", "t": 2.991, "text": "  \"launched\": true,"}
+{"type": "output", "t": 2.991, "text": "  \"run_id\": \"it-20260822-101810-d74a08\","}
+{"type": "output", "t": 2.991, "text": "  \"arbiter\": \"current-window\","}
+{"type": "output", "t": 2.991, "text": "  \"executor\": {"}
+{"type": "output", "t": 2.991, "text": "    \"title\": \"[IT EXEC] Implement a bounded slice with tests.\","}
+{"type": "output", "t": 2.991, "text": "    \"model\": \"executor-a\""}
+{"type": "output", "t": 2.991, "text": "  },"}
+{"type": "output", "t": 2.991, "text": "  \"reviewer\": {"}
+{"type": "output", "t": 2.991, "text": "    \"title\": \"[IT REVIEW] Implement a bounded slice with tests.\","}
+{"type": "output", "t": 2.991, "text": "    \"model\": \"reviewer-b\""}
+{"type": "output", "t": 2.991, "text": "  },"}
+{"type": "output", "t": 2.991, "text": "  \"ledger\": \"/private/tmp/it-demo-hq_oxdqi/tmpvubxhn7j/state/runs/it-20260822-101810-d74a08/ledger.md\","}
+{"type": "output", "t": 2.991, "text": "  \"phase\": \"await-executor\""}
+{"type": "output", "t": 2.991, "text": "}"}
+{"type": "output", "t": 2.991, "text": "{"}
+{"type": "output", "t": 2.991, "text": "  \"launched\": true,"}
+{"type": "output", "t": 2.991, "text": "  \"run_id\": \"it-20260822-101810-0195c8\","}
+{"type": "output", "t": 2.991, "text": "  \"arbiter\": \"current-window\","}
+{"type": "output", "t": 2.991, "text": "  \"executor\": {"}
+{"type": "output", "t": 2.991, "text": "    \"title\": \"[铁三角·执行] 实现有界任务切片。\","}
+{"type": "output", "t": 2.991, "text": "    \"model\": \"executor-a\""}
+{"type": "output", "t": 2.991, "text": "  },"}
+{"type": "output", "t": 2.991, "text": "  \"reviewer\": {"}
+{"type": "output", "t": 2.991, "text": "    \"title\": \"[铁三角·审查] 实现有界任务切片。\","}
+{"type": "output", "t": 2.991, "text": "    \"model\": \"reviewer-b\""}
+{"type": "output", "t": 2.991, "text": "  },"}
+{"type": "output", "t": 2.991, "text": "  \"ledger\": \"/private/tmp/it-demo-hq_oxdqi/tmpad0yjf3a/state/runs/it-20260822-101810-0195c8/ledger.md\","}
+{"type": "output", "t": 2.991, "text": "  \"phase\": \"await-executor\""}
+{"type": "output", "t": 2.991, "text": "}"}
+{"type": "output", "t": 2.998, "text": "[exit 0]"}
+{"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % cp examples/runtime-config.example.json ~/my-runtime.json"}
+{"type": "output", "t": 0.003, "text": "[exit 0]"}
+{"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % # ~/my-runtime.json: every <placeholder> replaced (demo-local values)"}
+{"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % python3 -m json.tool ~/my-runtime.json > /dev/null && echo \"config ready\""}
+{"type": "output", "t": 0.4, "text": "config ready"}
+{"type": "output", "t": 0.001, "text": "[exit 0]"}
+{"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % python3 scripts/iron_triangle_bridge.py --config ~/my-runtime.json doctor"}
+{"type": "output", "t": 0.05, "text": "{"}
+{"type": "output", "t": 0.05, "text": "  \"ok\": true,"}
+{"type": "output", "t": 0.05, "text": "  \"tool_version\": \"0.3.0-rc.1\","}
+{"type": "output", "t": 0.05, "text": "  \"config_schema_version\": 2,"}
+{"type": "output", "t": 0.05, "text": "  \"checks\": ["}
+{"type": "output", "t": 0.05, "text": "    {"}
+{"type": "output", "t": 0.05, "text": "      \"name\": \"python\","}
+{"type": "output", "t": 0.05, "text": "      \"status\": \"pass\","}
+{"type": "output", "t": 0.05, "text": "      \"detail\": \"python 3.9.6\""}
+{"type": "output", "t": 0.05, "text": "    },"}
+{"type": "output", "t": 0.05, "text": "    {"}
+{"type": "output", "t": 0.05, "text": "      \"name\": \"config\","}
+{"type": "output", "t": 0.05, "text": "      \"status\": \"pass\","}
+{"type": "output", "t": 0.05, "text": "      \"detail\": \"loaded at schema v2: /private/tmp/it-demo-hq_oxdqi/home/my-runtime.json\""}
+{"type": "output", "t": 0.05, "text": "    },"}
+{"type": "output", "t": 0.05, "text": "    {"}
+{"type": "output", "t": 0.05, "text": "      \"name\": \"state_dir\","}
+{"type": "output", "t": 0.05, "text": "      \"status\": \"pass\","}
+{"type": "output", "t": 0.05, "text": "      \"detail\": \"writable: /private/tmp/it-demo-hq_oxdqi/home/it-demo-state\""}
+{"type": "output", "t": 0.05, "text": "    },"}
+{"type": "output", "t": 0.05, "text": "    {"}
+{"type": "output", "t": 0.05, "text": "      \"name\": \"event_stream.kimi-code\","}
+{"type": "output", "t": 0.05, "text": "      \"status\": \"pass\","}
+{"type": "output", "t": 0.05, "text": "      \"detail\": \"configured and present\""}
+{"type": "output", "t": 0.05, "text": "    },"}
+{"type": "output", "t": 0.05, "text": "    {"}
+{"type": "output", "t": 0.05, "text": "      \"name\": \"supervisor\","}
+{"type": "output", "t": 0.05, "text": "      \"status\": \"pass\","}
+{"type": "output", "t": 0.05, "text": "      \"detail\": \"native target: launchd\""}
+{"type": "output", "t": 0.05, "text": "    }"}
+{"type": "output", "t": 0.05, "text": "  ]"}
+{"type": "output", "t": 0.05, "text": "}"}
+{"type": "output", "t": 0.054, "text": "[exit 0]"}
+{"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % python3 src/iron_triangle/sanitizer.py ."}
+{"type": "output", "t": 0.09, "text": "sanitization scan passed: 0 hits across all rules"}
+{"type": "output", "t": 0.092, "text": "[exit 0]"}
+{"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % python3 scripts/build_skills.py --check"}
+{"type": "output", "t": 0.023, "text": "generated skills are up to date"}
+{"type": "output", "t": 0.025, "text": "[exit 0]"}
