@@ -9,10 +9,10 @@ description: >-
   reasoning/execution budgets. Orchestrates a distinct executor, an
   independent reviewer, a durable append-only ledger, and a supervised relay.
 license: MIT
-compatibility: Any agent runtime; durable unattended watching requires an OS service supervisor.
+compatibility: Agent Skills-compatible runtimes; automatic cross-app dispatch additionally requires a configured target adapter and supervised relay.
 metadata:
   protocol: iron-triangle
-  version: 0.3.1
+  version: 0.3.2
 ---
 <!-- GENERATED from skills/iron-triangle by scripts/build_skills.py; do not edit directly. -->
 
@@ -29,6 +29,8 @@ Explicit invocation authorizes creating the role sessions and durable run artifa
 - Explicit app, window/session, model, and effort assignments in the same message override private defaults.
 - Task text present: launch immediately. Only the phrase present: ask only for the missing task. Never make the user restate this contract.
 - Unresolvable adapter or target: fail closed with one concise blocker; label unsupported transport **open question**.
+- The receiving controller and the target worker runtime are separate choices. A Codex, Claude Code, Kimi Code, or Cursor arbiter may dispatch to a differently named target only through that target's configured native/API/CLI adapter. Never replace a missing adapter with screen control.
+- If [references/local-runtime.md](references/local-runtime.md) says **configured**, use its exact bridge argv for cross-application work and load the target platform reference below. If it says **unconfigured**, use a genuinely available native adapter or disclose degraded/manual mode; do not rediscover private paths by broad filesystem search.
 
 Implicit gate (no phrase used): count (1) at least one day or cross-session/window, (2) production/irreversible/high-fabrication-risk work, (3) unattended continuation, (4) separated reasoning/execution budgets. Activate at two or more; otherwise run as a normal single-agent task. If three roles or a durable ledger cannot be instantiated, disclose degraded mode — never label executor self-review as independent.
 
@@ -59,6 +61,7 @@ Load on demand:
 - [references/workflow.md](references/workflow.md) — three-role start checklists, the ten required mechanisms, and closure conditions;
 - [references/templates.md](references/templates.md) — ledger entry, receipt, review record, pre-decision, decision-summary, and closure-briefing templates;
 - [references/failure-controls.md](references/failure-controls.md) — the seven observed failure classes and their controls;
+- [references/local-runtime.md](references/local-runtime.md) — installation-local bridge binding or an explicit unconfigured receipt; read it whenever executor/reviewer live in another app;
 - [references/platform-codex.md](references/platform-codex.md), [references/platform-claude-code.md](references/platform-claude-code.md), [references/platform-kimi-session-api.md](references/platform-kimi-session-api.md), [references/platform-cursor.md](references/platform-cursor.md), [references/platform-generic-cli.md](references/platform-generic-cli.md) — per-runtime orchestration mappings for the four primitives (`turn_ended`, `dispatch`, `watch`, `escalate`);
 - [assets/ledger-entry-template.md](assets/ledger-entry-template.md), [assets/receipt-template.yaml](assets/receipt-template.yaml), [assets/predecision-contract-template.md](assets/predecision-contract-template.md) — copy-paste starting files.
 
@@ -71,13 +74,15 @@ Load on demand:
 5. Unknown delivery state is an escalation condition, never a license to resend.
 6. Unknown policy choices are written as **open question**, not filled by assumption.
 7. Language is automatic — the user never operates a language switch. Before launching, determine one `response_language` for the whole run: an explicit user language requirement wins; otherwise use the dominant language of the user's task (the bridge also auto-detects it when nothing explicit exists). Pass it once (`launch --language <code>` or config `"language"`); the executor and reviewer inherit it jointly and never re-judge separately. Catalog-backed languages (`en`, `zh-CN`) localize window titles, contracts, and narration values; any other recognized code keeps English machine fields and role labels while both roles' natural-language replies follow `response_language`. For a mid-run switch, the arbiter registers it (`arbiter --decision continue --language <code>`) so both roles change together — never one silently splitting from the other. Native UI text of third-party apps stays outside this policy (**open question**).
+8. A logical session binding is the execution target; a visible desktop window is optional presentation. Computer Use, screen clicking, focus changes, keystroke injection, or UI text insertion are never dispatch, delivery acknowledgement, approval, stop, or recovery mechanisms: UI automation must never be used as transport. If no native/API/CLI transport exists, prepare a manual handoff and label it undelivered until the user delivers it.
+9. Starting a second non-terminal run in the same workspace fails closed by default. Concurrent runs require an explicit user override and separate receipts; a local `stopped` label without destination abort confirmation never authorizes replacement work.
 
 ## Arbiter cost partition
 
 These rules operationalize mechanism 10. They do not add an eleventh mechanism and they do not change the marker contract.
 
 - The arbiter produces ruling text only: acceptance lines, red lines, pre-decisions, exception rulings, and the six-element closure briefing. Session creation, worker dispatch, polling, material assembly, and evidence persistence belong to the executor or the supervised orchestration layer.
-- The arbiter window MAY invoke the documented bridge commands that start a run or record a ruling (`launch`, `status --pending`, `arbiter --decision`). It MUST NOT call vendor session APIs, debug consoles, or perform executor investigation.
+- The arbiter window MAY invoke the documented bridge commands that start a run, inspect a pending approval, resolve an approval already covered by user authority/pre-decision, or record a ruling (`launch`, `status --pending`, `approvals`, `resolve-approval`, `arbiter --decision`). It MUST NOT call vendor session APIs directly, use debug consoles, control the worker UI, or perform executor investigation.
 - At the end of every executor or reviewer turn, attach a compact **decision-summary block** of at most 10 lines covering conclusion, key figures, risks, and items needing a ruling (see [references/templates.md](references/templates.md)). Full worker narratives stay in evidence files. The arbiter's default intake is that block plus receipt identifiers. If the block is missing or too thin to rule, fail closed and request a complete summary — do not compensate by reading implementation.
 - Role trials or replacements: the arbiter freezes the prompt template in the ledger; the executor delivers it verbatim. The arbiter does not run the trial.
 - Incidents, including production or P0 events, do not exempt the cost partition. The arbiter still rules from the summary and receipts; it does not become the incident operator.
@@ -101,9 +106,11 @@ The six-element briefing is synthesized from the workers' decision-summary block
 Wrap vendor-specific endpoints behind a backend boundary; endpoints, payload shapes, account identifiers, and credentials are deployment configuration, never protocol text or repository content.
 
 - `turn_ended(executor)`: parse terminal events from the session event stream past a durable byte cursor; fall back to the session summary sequence when the stream is not configured. Persist the cursor before dispatch; stop fail-closed on truncation.
-- `dispatch(role, text)`: check the destination can accept work, send an idempotent prompt with a stable prompt id, and record the destination acknowledgement. HTTP rejection is `rejected`; transport timeout is `unknown` — an escalation condition, never a blind retry.
+- `dispatch(role, text)`: send an idempotent prompt with a stable prompt id and record the destination acknowledgement. Kimi Code Server API 0.38 returns `running`, `queued`, or `blocked` for an acknowledged prompt; preserve that remote status in the receipt while mapping it to protocol-level `accepted`. HTTP rejection is `rejected`; transport timeout or an unrecognized status is `unknown` — an escalation condition, never a blind retry.
 - `watch(ledger)`: a supervised external watcher with a durable cursor under launchd/systemd; stop on ledger truncation or rewrite.
 - `escalate(arbiter)`: write to the arbiter outbox plus an optional desktop notification. Reliable automatic injection into the exact originating controller window has no cross-platform API — **open question**; manual paste from the outbox is the dependable path.
+- `stop(run)`: abort only prompt ids recorded as owned by that run. A destination-confirmed abort or exact-prompt already-terminal response permits local `stopped`; any transport uncertainty remains suspended and forbids a replacement launch.
+- `approval(role)`: list and resolve approvals through the session API. UI clicking is not an approval receipt.
 
 ## Runnable bridge
 
@@ -114,9 +121,10 @@ python3 scripts/iron_triangle_bridge.py --config <private-runtime-config> prefli
 python3 scripts/iron_triangle_bridge.py --config <private-runtime-config> launch --cwd <workspace> --task '<task>'
 python3 scripts/iron_triangle_bridge.py --config <private-runtime-config> install   # supervised relay (launchd)
 python3 scripts/iron_triangle_bridge.py --config <private-runtime-config> status --pending
+python3 scripts/iron_triangle_bridge.py --config <private-runtime-config> approvals --run-id <run-id>
 ```
 
-`preflight` is read-only. Model and window names resolve against the live catalog; ambiguity fails closed. See `docs/kimi-code-bridge.md` for the full command surface, including `doctor`, `repair`, `uninstall`, and crash recovery via `resume --ack-prompt-id` / `--retry-new`.
+`preflight` is read-only. Model and window names resolve against the live catalog; ambiguity fails closed. A second non-terminal run in the same workspace is rejected unless the user explicitly supplies `--allow-concurrent`. See `docs/kimi-code-bridge.md` for the full command surface, including real prompt abort on `arbiter --decision stop`, `resolve-approval`, `doctor`, `repair`, `uninstall`, and crash recovery via `resume --ack-prompt-id` / `--retry-new`.
 
 ## Rotation
 

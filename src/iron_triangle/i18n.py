@@ -154,10 +154,18 @@ The decision file will be written to {decision_path}. Do not dispatch another mo
 
 - Scope: active run
 - Decision or claim: {message}
-- Evidence: current run state
-- Result: suspended
+- Evidence: destination prompt-stop receipts {receipts}
+- Result: stopped
 - Rollback: preserve all receipts
 - Next: none""",
+        "ledger_stop_unconfirmed": """## R-{sequence} arbiter stop-unconfirmed {timestamp}
+
+- Scope: active run
+- Decision or claim: stop was requested but destination interruption could not be confirmed.
+- Evidence: destination prompt-stop receipts {receipts}
+- Result: suspended
+- Rollback: preserve all receipts; do not launch a replacement run
+- Next: restore adapter reachability and retry stop""",
         "ledger_language_switch": "- Response language switched: {old} -> {new} (registered by the arbiter; both roles inherit)",
     },
     "zh-CN": {
@@ -264,10 +272,18 @@ The decision file will be written to {decision_path}. Do not dispatch another mo
 
 - Scope: 活跃运行
 - Decision or claim: {message}
-- Evidence: 当前运行状态
-- Result: suspended
+- Evidence: 目标端 prompt 停止收据 {receipts}
+- Result: stopped
 - Rollback: 保留全部收据
 - Next: 无""",
+        "ledger_stop_unconfirmed": """## R-{sequence} arbiter stop-unconfirmed {timestamp}
+
+- Scope: 活跃运行
+- Decision or claim: 已请求停止，但无法确认目标端执行已中止。
+- Evidence: 目标端 prompt 停止收据 {receipts}
+- Result: suspended
+- Rollback: 保留全部收据；不得启动替代运行
+- Next: 恢复适配器连通性后重试停止""",
         "ledger_language_switch": "- 回复语言已切换：{old} -> {new}（由主控登记；执行者与审查者共同继承）",
     },
 }

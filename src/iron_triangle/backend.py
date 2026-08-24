@@ -33,6 +33,20 @@ class Delivery:
 
 
 @dataclass(frozen=True)
+class AbortReceipt:
+    """Result of stopping one prompt owned by a run.
+
+    ``aborted`` means the destination confirmed interruption;
+    ``already-terminal`` means the exact prompt was no longer active;
+    ``unknown`` means the bridge cannot honestly claim that execution stopped.
+    """
+
+    status: str  # aborted | already-terminal | unknown
+    prompt_id: str
+    detail: str | None = None
+
+
+@dataclass(frozen=True)
 class CapabilityReport:
     adapter_id: str
     tier: str  # automatic | semi-automatic | manual
@@ -41,6 +55,8 @@ class CapabilityReport:
     sessions_visible: int = 0
     event_stream_configured: bool = False
     event_stream_available: bool = False
+    prompt_statuses: tuple[str, ...] = ()
+    prompt_contract_compatible: bool = False
     notes: list[str] = field(default_factory=list)
 
     def to_json(self) -> dict[str, Any]:
@@ -53,6 +69,10 @@ class CapabilityReport:
             "event_stream": {
                 "configured": self.event_stream_configured,
                 "available": self.event_stream_available,
+            },
+            "prompt_contract": {
+                "compatible": self.prompt_contract_compatible,
+                "statuses": list(self.prompt_statuses),
             },
             "notes": list(self.notes),
         }
@@ -83,7 +103,7 @@ class Binding:
 
 @runtime_checkable
 class BridgeBackend(Protocol):
-    """The seven primitive groups every controller adapter must expose."""
+    """The controller adapter surface used by the durable runner."""
 
     adapter_id: str
 
@@ -130,4 +150,8 @@ class BridgeBackend(Protocol):
         prompt_id: str,
     ) -> Delivery:
         """Idempotent prompt send; returns three-valued Delivery."""
+        ...
+
+    def abort_prompt(self, *, binding: Binding, prompt_id: str) -> AbortReceipt:
+        """Stop the exact prompt owned by a run; never infer ownership from busy state."""
         ...

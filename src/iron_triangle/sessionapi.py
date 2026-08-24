@@ -15,6 +15,7 @@ import urllib.request
 from typing import Any
 
 from .backend import (
+    AbortReceipt,
     CAPABILITY_AUTOMATIC,
     Binding,
     CapabilityReport,
@@ -24,6 +25,11 @@ from .errors import BridgeError
 from . import i18n
 from .prompts import role_system_prompt
 from .util import expand_path
+
+# Prompt acknowledgement states this bridge understands well enough to send
+# work into. Anything else published by the live OpenAPI document fails the
+# contract gate closed before dispatch.
+KNOWN_PROMPT_STATUSES = frozenset({"accepted", "running", "queued", "blocked"})
 
 
 class SessionApiClient:
@@ -39,7 +45,7 @@ class SessionApiClient:
         if not self.token:
             raise BridgeError("configured token file is empty")
 
-    def request(self, method: str, path: str, body: dict[str, Any] | None = None) -> Any:
+    def request_envelope(self, method: str, path: str, body: dict[str, Any] | None = None) -> dict[str, Any]:
         url = f"{self.base_url}/{path.lstrip('/')}"
         data = None if body is None else json.dumps(body, ensure_ascii=False).encode("utf-8")
         headers = {"Authorization": f"Bearer {self.token}", "Accept": "application/json"}
@@ -54,9 +60,77 @@ class SessionApiClient:
             raise BridgeError(f"session API HTTP {exc.code}: {detail}") from exc
         except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
             raise BridgeError(f"session API unavailable or invalid response: {exc}") from exc
-        if not isinstance(payload, dict) or payload.get("code") != 0:
+        if not isinstance(payload, dict):
+            raise BridgeError(f"session API returned a non-object response: {payload!r}")
+        return payload
+
+    def request(self, method: str, path: str, body: dict[str, Any] | None = None) -> Any:
+        payload = self.request_envelope(method, path, body)
+        if payload.get("code") != 0:
             raise BridgeError(f"session API rejected request: {payload!r}")
         return payload.get("data")
+
+    def openapi(self) -> dict[str, Any]:
+        """Read the runtime's published contract without assuming its API prefix.
+
+        Kimi Code serves the OpenAPI document at the HTTP origin while the
+        configured bridge base normally ends in ``/api/v1``.  This read-only
+        sensor prevents a runtime upgrade from silently changing delivery
+        semantics underneath the bridge again.
+        """
+
+        parts = urllib.parse.urlsplit(self.base_url)
+        url = urllib.parse.urlunsplit((parts.scheme, parts.netloc, "/openapi.json", "", ""))
+        request = urllib.request.Request(
+            url,
+            headers={"Authorization": f"Bearer {self.token}", "Accept": "application/json"},
+            method="GET",
+        )
+        try:
+            with urllib.request.urlopen(request, timeout=15) as response:
+                payload = json.loads(response.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            detail = exc.read().decode("utf-8", errors="replace")[:600]
+            raise BridgeError(f"OpenAPI HTTP {exc.code}: {detail}") from exc
+        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            raise BridgeError(f"OpenAPI unavailable or invalid response: {exc}") from exc
+        if not isinstance(payload, dict) or not isinstance(payload.get("paths"), dict):
+            raise BridgeError("OpenAPI response has no paths object")
+        return payload
+
+    def prompt_status_contract(self) -> tuple[str, ...]:
+        """Return POST-prompt acknowledgement statuses from the live schema."""
+
+        operation = (
+            self.openapi()
+            .get("paths", {})
+            .get("/api/v1/sessions/{session_id}/prompts", {})
+            .get("post")
+        )
+        if not isinstance(operation, dict):
+            raise BridgeError("OpenAPI does not publish the session prompt POST operation")
+
+        statuses: set[str] = set()
+
+        def visit(value: Any) -> None:
+            if isinstance(value, dict):
+                properties = value.get("properties")
+                if isinstance(properties, dict):
+                    status_schema = properties.get("status")
+                    if isinstance(status_schema, dict):
+                        enum = status_schema.get("enum")
+                        if isinstance(enum, list):
+                            statuses.update(item for item in enum if isinstance(item, str))
+                for child in value.values():
+                    visit(child)
+            elif isinstance(value, list):
+                for child in value:
+                    visit(child)
+
+        visit(operation.get("responses", {}))
+        if not statuses:
+            raise BridgeError("OpenAPI prompt POST response publishes no status enum")
+        return tuple(sorted(statuses))
 
     def models(self) -> list[dict[str, Any]]:
         return list(self.request("GET", "models").get("items", []))
@@ -121,6 +195,42 @@ class SessionApiClient:
                 body,
             )
         )
+
+    def abort_prompt(self, *, session_id: str, prompt_id: str) -> dict[str, Any]:
+        session = urllib.parse.quote(session_id, safe="")
+        prompt = urllib.parse.quote(prompt_id, safe="")
+        payload = self.request_envelope("POST", f"sessions/{session}/prompts/{prompt}:abort", {})
+        if payload.get("code") == 0:
+            return dict(payload.get("data") or {})
+        # Kimi Code publishes 40903 when the prompt exists but is no longer
+        # active, and 40402 after the active/queued record has been retired.
+        # Both are idempotent stop success only because the caller supplies an
+        # exact session + run-owned prompt id; no generic 404 is accepted.
+        if payload.get("code") == 40903 and isinstance(payload.get("data"), dict):
+            return dict(payload["data"])
+        if payload.get("code") == 40402:
+            return {"aborted": False, "reason": "prompt-not-found"}
+        raise BridgeError(f"session API rejected abort request: {payload!r}")
+
+    def approvals(self, *, session_id: str) -> list[dict[str, Any]]:
+        session = urllib.parse.quote(session_id, safe="")
+        result = self.request("GET", f"sessions/{session}/approvals?status=pending")
+        return list(dict(result).get("items", []))
+
+    def resolve_approval(
+        self,
+        *,
+        session_id: str,
+        approval_id: str,
+        decision: str,
+        feedback: str | None = None,
+    ) -> dict[str, Any]:
+        session = urllib.parse.quote(session_id, safe="")
+        approval = urllib.parse.quote(approval_id, safe="")
+        body: dict[str, Any] = {"decision": decision}
+        if feedback:
+            body["feedback"] = feedback
+        return dict(self.request("POST", f"sessions/{session}/approvals/{approval}", body))
 
 
 def model_label(item: dict[str, Any]) -> str:
@@ -197,6 +307,36 @@ class SessionApiBackend:
         self.config = config
         self.adapter = config["adapters"][self.adapter_id]
         self.client = SessionApiClient(self.adapter)
+        self._contract_verified = False
+        self._contract_refusal: str | None = None
+
+    # -- dispatch contract gate ------------------------------------------------
+
+    def contract_gate(self) -> str | None:
+        """Refusal reason for sending work, or ``None`` when verified safe.
+
+        Read-only OpenAPI sensing runs before any dispatch: a runtime that
+        publishes unknown prompt acknowledgement states — or whose contract
+        cannot be read at all — must not receive prompts whose delivery
+        semantics we would have to guess. A verified-compatible contract is
+        cached; an incompatible one stays refused for this backend's lifetime;
+        a transport-level read failure refuses the current send and retries
+        verification on the next dispatch.
+        """
+        if self._contract_verified:
+            return self._contract_refusal
+        try:
+            statuses = self.client.prompt_status_contract()
+        except BridgeError as exc:
+            return f"OpenAPI prompt contract could not be verified: {exc}"
+        self._contract_verified = True
+        unknown = sorted(set(statuses) - KNOWN_PROMPT_STATUSES)
+        if unknown or not statuses:
+            self._contract_refusal = (
+                "OpenAPI publishes unsupported prompt acknowledgement statuses: "
+                + (", ".join(unknown) if unknown else "<no status enum>")
+            )
+        return self._contract_refusal
 
     # -- capability probe ---------------------------------------------------
 
@@ -205,9 +345,19 @@ class SessionApiBackend:
         api_reachable = True
         models: list[dict[str, Any]] = []
         sessions: list[dict[str, Any]] = []
+        prompt_statuses: tuple[str, ...] = ()
+        prompt_contract_compatible = False
         try:
             models = self.client.models()
             sessions = self.client.sessions()
+            prompt_statuses = self.client.prompt_status_contract()
+            known = {"accepted", "running", "queued", "blocked"}
+            prompt_contract_compatible = bool(prompt_statuses) and set(prompt_statuses) <= known
+            if not prompt_contract_compatible:
+                notes.append(
+                    "prompt acknowledgement contract contains unsupported statuses: "
+                    + ", ".join(prompt_statuses)
+                )
         except BridgeError as exc:
             api_reachable = False
             notes.append(str(exc))
@@ -226,6 +376,8 @@ class SessionApiBackend:
             sessions_visible=len(sessions),
             event_stream_configured=configured,
             event_stream_available=available,
+            prompt_statuses=prompt_statuses,
+            prompt_contract_compatible=prompt_contract_compatible,
             notes=notes,
         )
 
@@ -293,7 +445,12 @@ class SessionApiBackend:
 
     def dispatch(self, *, binding: Binding, text: str, prompt_id: str) -> Delivery:
         """Send one prompt. HTTP-level rejection maps to ``rejected``; transport
-        failure or timeout maps to ``unknown``; only a 2xx ack is ``accepted``."""
+        failure or timeout maps to ``unknown``. Kimi Code's successful prompt
+        contract returns ``running``, ``queued``, or ``blocked`` together with
+        a destination prompt id; all three are destination acknowledgements."""
+        gate = self.contract_gate()
+        if gate is not None:
+            return Delivery(status="rejected", prompt_id=prompt_id, detail=f"contract-gate: {gate}")
         try:
             result = self.client.prompt(
                 session_id=binding.session_id,
@@ -308,7 +465,25 @@ class SessionApiBackend:
             if detail.startswith("session API HTTP"):
                 return Delivery(status="rejected", prompt_id=prompt_id, detail=detail)
             return Delivery(status="unknown", prompt_id=prompt_id, detail=detail)
-        status = result.get("status", "accepted")
-        if status != "accepted":
-            return Delivery(status="unknown", prompt_id=str(result.get("prompt_id", prompt_id)), detail=f"status={status}")
-        return Delivery(status="accepted", prompt_id=str(result.get("prompt_id", prompt_id)))
+        remote_status = str(result.get("status", ""))
+        destination_prompt_id = str(result.get("prompt_id", prompt_id))
+        if remote_status in {"running", "queued", "blocked", "accepted"}:
+            return Delivery(
+                status="accepted",
+                prompt_id=destination_prompt_id,
+                detail=f"remote_status={remote_status}",
+            )
+        return Delivery(
+            status="unknown",
+            prompt_id=destination_prompt_id,
+            detail=f"unrecognized remote_status={remote_status or '<missing>'}",
+        )
+
+    def abort_prompt(self, *, binding: Binding, prompt_id: str) -> AbortReceipt:
+        try:
+            result = self.client.abort_prompt(session_id=binding.session_id, prompt_id=prompt_id)
+        except BridgeError as exc:
+            return AbortReceipt(status="unknown", prompt_id=prompt_id, detail=str(exc))
+        if result.get("aborted") is True:
+            return AbortReceipt(status="aborted", prompt_id=prompt_id, detail="destination-confirmed")
+        return AbortReceipt(status="already-terminal", prompt_id=prompt_id, detail="destination-reported-not-active")

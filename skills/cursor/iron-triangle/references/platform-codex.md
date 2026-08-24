@@ -13,6 +13,7 @@ Implement the four primitives with the narrowest native mechanism available.
 - Parse app, window/session, model, and effort assignments from the same user message; explicit assignments win, unspecified roles use private defaults.
 - Create fresh executor/reviewer sessions by default; reuse an existing window only when the user names it or a private binding resolves it uniquely. Ambiguous names fail closed and print the matches.
 - Resolve model names against the live catalog; never invent an alias or silently pick among fuzzy matches.
+- The arbiter being Codex does not make Codex the executor. When the user targets Kimi Code or another app, read `references/local-runtime.md` plus that target's mapping and use the configured bridge/native adapter. If none exists, fail closed; do not control the target app's screen.
 
 ## Rotation
 

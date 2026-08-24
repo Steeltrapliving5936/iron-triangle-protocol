@@ -13,7 +13,7 @@ for path in (str(SRC), str(ROOT / "scripts")):
         sys.path.insert(0, path)
 
 from iron_triangle import store  # noqa: E402
-from iron_triangle.backend import Binding, CapabilityReport, Delivery  # noqa: E402
+from iron_triangle.backend import AbortReceipt, Binding, CapabilityReport, Delivery  # noqa: E402
 
 
 def base_config(tmp: pathlib.Path, **extra) -> dict:
@@ -47,6 +47,8 @@ class FakeBackend:
         self.fail_mode = fail_mode
         self.sessions: dict[str, dict] = {}
         self.dispatches: list[dict] = []
+        self.aborts: list[dict] = []
+        self.abort_mode: str | None = None
         self.models_catalog = [
             {"model": "executor-a", "display_name": "Executor A", "support_efforts": [], "default_effort": None},
             {"model": "reviewer-b", "display_name": "Reviewer B", "support_efforts": [], "default_effort": None},
@@ -65,6 +67,10 @@ class FakeBackend:
             event_stream_configured=bool(event_dir),
             event_stream_available=bool(event_dir),
         )
+
+    def contract_gate(self):
+        """Fakes stand in for a runtime whose prompt contract is compatible."""
+        return None
 
     # -- catalog / binding --------------------------------------------------------
 
@@ -135,6 +141,14 @@ class FakeBackend:
             return Delivery(status="unknown", prompt_id=prompt_id, detail="transport timeout")
         self.sessions[binding.session_id]["busy"] = True
         return Delivery(status="accepted", prompt_id=prompt_id)
+
+    def abort_prompt(self, *, binding: Binding, prompt_id: str) -> AbortReceipt:
+        self.aborts.append({"session_id": binding.session_id, "role": binding.role, "prompt_id": prompt_id})
+        if self.abort_mode == "unknown":
+            return AbortReceipt(status="unknown", prompt_id=prompt_id, detail="transport unavailable")
+        was_busy = bool(self.sessions[binding.session_id].get("busy"))
+        self.sessions[binding.session_id]["busy"] = False
+        return AbortReceipt(status="aborted" if was_busy else "already-terminal", prompt_id=prompt_id)
 
     # -- test conveniences ------------------------------------------------------
 

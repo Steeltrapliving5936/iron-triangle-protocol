@@ -540,14 +540,35 @@ class ChineseLedgerNarrationTests(unittest.TestCase):
     def test_arbiter_stop_default_message_is_chinese(self) -> None:
         run = make_run(self.config, self.backend, self.tmp, language="zh-CN")
         run["phase"] = "await-executor"
+        run["executor_prompt_id"] = "owned-executor-prompt"
         store.save_run(self.config, run)
         args = argparse.Namespace(run_id=run["run_id"], decision="stop", message=None, message_file=None)
-        with contextlib.redirect_stdout(io.StringIO()):
-            cli.cmd_arbiter(args, self.config, self.tmp / "runtime.json")
+        with mock.patch.object(cli, "SessionApiBackend", return_value=self.backend):
+            with contextlib.redirect_stdout(io.StringIO()):
+                cli.cmd_arbiter(args, self.config, self.tmp / "runtime.json")
         ledger = (store.run_dir(self.config, run["run_id"]) / "ledger.md").read_text(encoding="utf-8")
         self.assertIn("主控停止了本次运行。", ledger)
         self.assertIn("## R-1 arbiter stop", ledger)
-        self.assertIn("- Result: suspended", ledger)
+        self.assertIn("- Result: stopped", ledger)
+        stopped = store.load_run(self.config, run["run_id"])
+        self.assertIn(stopped["stop_receipts"][0]["status"], {"aborted", "already-terminal"})
+
+    def test_arbiter_stop_fails_closed_when_destination_abort_is_unknown(self) -> None:
+        run = make_run(self.config, self.backend, self.tmp, language="zh-CN")
+        run["phase"] = "await-executor"
+        run["executor_prompt_id"] = "owned-executor-prompt"
+        store.save_run(self.config, run)
+        self.backend.abort_mode = "unknown"
+        args = argparse.Namespace(run_id=run["run_id"], decision="stop", message=None, message_file=None)
+        with mock.patch.object(cli, "SessionApiBackend", return_value=self.backend):
+            with self.assertRaisesRegex(BridgeError, "could not be confirmed"):
+                with contextlib.redirect_stdout(io.StringIO()):
+                    cli.cmd_arbiter(args, self.config, self.tmp / "runtime.json")
+        stopped = store.load_run(self.config, run["run_id"])
+        self.assertEqual(stopped["phase"], "suspended")
+        self.assertEqual(stopped["suspension_reason"], "stop-unconfirmed")
+        ledger = (store.run_dir(self.config, run["run_id"]) / "ledger.md").read_text(encoding="utf-8")
+        self.assertIn("stop-unconfirmed", ledger)
 
     def test_arbiter_accept_default_closure_summary_is_chinese(self) -> None:
         run = make_run(self.config, self.backend, self.tmp, language="zh-CN")
@@ -699,6 +720,9 @@ class ModelReceiptTests(unittest.TestCase):
             "permission_mode": None,
             "language": None,
             "dry_run": True,
+            # Receipt tests intentionally create multiple isolated runs in one
+            # temporary workspace; concurrency policy is covered separately.
+            "allow_concurrent": True,
         }
         values.update(overrides)
         return argparse.Namespace(**values)

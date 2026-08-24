@@ -38,6 +38,7 @@ interface IronTriangleAdapter {
   dispatch(role: Role, text: string): Promise<Delivery>;
   watchLedger(after: Cursor): AsyncIterable<MarkerEvent>;
   escalate(text: string): Promise<Delivery>;
+  stop(runId: string): Promise<Delivery>;
 }
 ```
 
@@ -97,6 +98,10 @@ Persist the last consumed byte offset, record sequence, or event cursor. On trun
 
 Wake the arbiter through a platform notification or produce a copy-ready manual handoff. Manual paste is a valid and dependable degraded path. Never label a prepared handoff as delivered.
 
+### `stop(runId)`
+
+Cancel only work whose destination prompt/task identifiers are owned by the run. Read back destination-confirmed cancellation or exact-task terminal state before reporting `stopped`. Shutting down the local relay alone is not execution cancellation and remains a suspended/unknown stop state.
+
 ## 4. Generic adapter skeleton
 
 ```python
@@ -121,7 +126,7 @@ class Adapter:
             self.record_delivery(self.dispatch("reviewer", state.wake_prompt))
 ```
 
-The skeleton is illustrative. Persistence, authentication, concurrency control, and retry semantics are platform responsibilities.
+The skeleton is illustrative. Persistence, authentication, concurrency control, exact-prompt cancellation, and retry semantics are platform responsibilities. A UI automation layer is presentation only and cannot satisfy dispatch, stop, approval, or delivery-receipt semantics.
 
 ## 5. Codex-style runtime
 
@@ -168,11 +173,11 @@ Endpoints, payload shapes, account identifiers, and credentials are deployment c
 An interactive window may not expose a stable session API. Implement an honest semi-automatic adapter:
 
 - `turnEnded`: use an exported completion event if available; otherwise require an atomic sentinel written by the executor;
-- `dispatch`: focus the bound role window and insert a copy-ready prompt, or return a manual-paste payload;
+- `dispatch`: use a supported native session/task API, or return a manual-paste payload for the user;
 - `watchLedger`: use an external file watcher with a durable cursor;
 - `escalate`: raise an OS notification and place the arbiter payload on a controlled handoff surface.
 
-UI focus or text insertion is not delivery. The adapter records `accepted: false` until the destination acknowledges the prompt.
+UI focus, clicking, or text insertion is not an adapter transport. The adapter records a prepared manual payload as `accepted: false` until the destination acknowledges the prompt.
 
 ## 9. Generic CLI runtime
 

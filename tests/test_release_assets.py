@@ -172,6 +172,8 @@ class ReadmeStructureTests(unittest.TestCase):
             "cp examples/runtime-config.example.json ~/my-runtime.json",
             "# edit ~/my-runtime.json: replace every <placeholder>",
             "python3 scripts/iron_triangle_bridge.py --config ~/my-runtime.json doctor",
+            "skills install --platform codex",
+            "skills status --platform codex",
         ):
             self.assertIn(fragment, block.group(1))
 

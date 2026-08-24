@@ -2,7 +2,7 @@
 
 This adapter lets the current control window create or reuse two Kimi Code sessions, select any model alias exposed by the local session API, dispatch the executor, and hand the completed turn to an independent reviewer through a supervised relay.
 
-v0.2 keeps the field-proven wire behavior and every v0.1 command; the implementation now lives in `src/iron_triangle/` behind a controller-agnostic policy state machine and adapter boundary (`backend.py`). The entry shim `scripts/iron_triangle_bridge.py` stays the documented interface.
+The implementation lives in `src/iron_triangle/` behind a controller-agnostic policy state machine and adapter boundary (`backend.py`). The entry shim `scripts/iron_triangle_bridge.py` stays the documented interface. The bridge reads the live OpenAPI prompt contract before launch: Kimi Code 0.38 returns `running`, `queued`, or `blocked`, all of which are destination acknowledgements rather than failures.
 
 ## Capability tier (honest grading)
 
@@ -25,7 +25,7 @@ python3 scripts/iron_triangle_bridge.py \
   --config <private-runtime-config> preflight
 ```
 
-`preflight` is read-only: API reachability, catalog sizes, terminal-event stream health, and resolution of the configured default executor and reviewer.
+`preflight` is read-only: API reachability, catalog sizes, terminal-event stream health, live OpenAPI prompt-status compatibility, and resolution of the configured default executor and reviewer. An unknown acknowledgement status fails closed before launch.
 
 ## Launch
 
@@ -37,6 +37,8 @@ python3 scripts/iron_triangle_bridge.py \
 ```
 
 Override either role per task with `--executor-model` / `--reviewer-model` (model id or unique display name; resolved against the live catalog, ambiguity fails closed) and `--executor-thinking` / `--reviewer-thinking`. Reuse named existing windows with `--executor-session` / `--reviewer-session`; ambiguous names fail closed printing the matches, and executor/reviewer can never share one window. `--dry-run` prints the plan without side effects.
+
+Only one nonterminal run may own a canonical workspace. A second launch fails before session creation unless the user explicitly authorizes concurrency with `--allow-concurrent`.
 
 Each role's launch persists a model receipt in run state (and prints it; `status` surfaces it): requested and applied model, whether the request was explicit or an adapter default, requested and applied thinking effort plus its source (`flag` / `adapter-config` / `model-default` / `none`), whether resolution fell back to a label the request never named, and the run's independence level (`separate-sessions`). No adapter read-back exists yet, so `readback` stays `unreadback` — the receipt never claims the destination was verified to run the applied values.
 
@@ -67,13 +69,16 @@ The watcher persists run state, delivery identifiers, terminal-event byte cursor
 
 | Condition | Behavior |
 |---|---|
+| OpenAPI prompt contract unreadable or publishing unknown states | dispatch refused before sending (`launch` refuses before binding windows); line suspended, outbox entry |
 | duplicate / replayed turn-ended | no second dispatch |
 | event-stream truncation | run suspended, arbiter outbox entry |
-| transport timeout on dispatch | `transport-unknown`; never blind-retried |
-| HTTP rejection by destination | line suspended, outbox entry |
+| transport timeout on dispatch | `transport-unknown`; pending record kept for human ack / `--retry-new`; never blind-retried |
+| definite dispatch rejection (contract gate or HTTP rejection) | pending record cleared; line stays suspended; later watcher passes never escalate it into `transport-unknown` or redispatch |
 | process restart with unresolved dispatch | escalates instead of resending |
 | reviewer ends without valid decision | suspends line into `await-arbiter` |
 | dual idle beyond `idle_wake_seconds` (optional, default off) | one reviewer wake |
+
+**Update semantics of the supervised daemon:** the watcher fingerprints its own package sources, entry script, and tool version on every pass. When the code or version identity on disk changes (for example after `git pull`), it finishes the current pass, records a `bridge-identity-changed` line in `daemon-errors.jsonl`, and exits cleanly — launchd `KeepAlive` (or systemd `Restart=always`) relaunches it on the new code within seconds, with no manual reinstall. Passes are never abandoned midway, so no in-flight prompt is interrupted, and all run state plus event cursors stay durable in `state_dir`. This applies to the real launchd target and the generated systemd unit; the experimental Windows task plan remains restart-on-failure only.
 
 Inspect and hand-hold runs with:
 
@@ -89,6 +94,16 @@ python3 scripts/iron_triangle_bridge.py --config <private-runtime-config> arbite
 ```
 
 For `NEEDS_ARBITER`, the same command supports `--decision continue --message-file <authorized-next-slice>` or `--decision stop`.
+
+`--decision stop` is a destination operation, not a local label: it aborts only prompt IDs durably owned by that run and records one receipt per role. If any abort cannot be confirmed, the run remains suspended and the bridge does not claim it stopped.
+
+Pending tool approvals are also handled over the runtime API, never by clicking a visible window:
+
+```bash
+python3 scripts/iron_triangle_bridge.py --config <private-runtime-config> approvals --run-id <run-id>
+python3 scripts/iron_triangle_bridge.py --config <private-runtime-config> resolve-approval \
+  --run-id <run-id> --role <executor|reviewer> --approval-id <approval-id> --decision <approved|rejected|cancelled>
+```
 
 ## Crash recovery
 
@@ -111,6 +126,7 @@ Both append a ledger receipt of the human verification; nothing auto-resends. An
 | `repair` | idempotent: ensure state dirs, prune stale temp files, re-render service-definition reference into `<state_dir>/service/`, flag ledger anomalies without touching them |
 | `upgrade` | migrate the runtime config to the current schema with a timestamped backup |
 | `version` | tool version, config schema version, Python, platform |
+| `skills install/status` | install a generated platform skill with a private runtime binding; hash/read-back verify the result |
 | `uninstall [--dry-run]` | reverse of `install` (real apply on launchd only) |
 
 ## Security and authority
@@ -119,3 +135,4 @@ Both append a ledger receipt of the human verification; nothing auto-resends. An
 - The bridge sends only the task authorized by the user and does not widen deployment, destructive-action, or external-communication permissions.
 - Existing windows are reused only when the user identifies them or a private binding does so unambiguously.
 - A transport timeout is an explicit unknown state, never a retryable failure.
+- Computer Use, focus/click/type automation, and visible window state are presentation only. They never satisfy dispatch, delivery, approval, stop, recovery, or receipt requirements.

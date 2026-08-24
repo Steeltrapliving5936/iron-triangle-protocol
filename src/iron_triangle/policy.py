@@ -105,6 +105,10 @@ def _escalate(inp: PolicyInput, message: str) -> list[Any]:
 
 def decide(inp: PolicyInput) -> list[Any]:
     """Next actions for one watcher pass over an active run."""
+    # Terminal state wins over stale migration/crash metadata. A watcher must
+    # never reopen a run that already has an accepted completion/stop receipt.
+    if inp.phase in {"complete", "stopped"}:
+        return []
     if inp.pending_dispatch is not None and inp.phase != "transport-unknown":
         prompt_id = str(inp.pending_dispatch.get("prompt_id", "<unknown>"))
         message = _text(inp, "msg_unresolved_dispatch", prompt_id=prompt_id)

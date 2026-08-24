@@ -98,6 +98,20 @@ class SkillValidationTests(unittest.TestCase):
             ):
                 self.assertIn(mechanism_line, workflow, skill_dir)
 
+    def test_cross_app_transport_is_bound_and_never_replaced_by_ui_control(self):
+        for skill_dir in [CANONICAL, *GENERATED]:
+            skill = (skill_dir / "SKILL.md").read_text(encoding="utf-8")
+            binding = (skill_dir / "references" / "local-runtime.md").read_text(encoding="utf-8")
+            kimi = (skill_dir / "references" / "platform-kimi-session-api.md").read_text(encoding="utf-8")
+            self.assertIn("receiving controller", skill, skill_dir)
+            self.assertIn("target worker runtime", skill, skill_dir)
+            self.assertIn("local-runtime.md", skill, skill_dir)
+            self.assertIn("Computer Use", skill, skill_dir)
+            self.assertIn("must never be used as transport", skill, skill_dir)
+            self.assertIn("Status: **unconfigured**", binding, skill_dir)
+            self.assertIn("running`, `queued`, or `blocked", kimi, skill_dir)
+            self.assertIn("exact-prompt", kimi, skill_dir)
+
     def test_validator_rejects_bad_name(self):
         from validate_skill import validate_skill
 

@@ -8,7 +8,7 @@
 
 **长任务里，执行模型会宣称未经验证的成功，或者悄悄漂移——而聊天记录是唯一剩下的证据。** 铁三角协议把裁决、执行、验证拆成三个可插拔的模型角色，再用只追加的纸面协议（台账、收据、红线、预裁决）构成不会随窗口丢失的“第四成员”。没有可复现收据的“完成”不允许出厂。
 
-- Protocol version: `1.0-draft` · Tool version: `0.3.1` · License: MIT
+- Protocol version: `1.0-draft` · Tool version: `0.3.2` (unreleased) · License: MIT
 - Evidence base: one four-day production field run. **No platform beyond the session-API runtime below is field-verified yet** — see the [support matrix](#support-matrix--支持矩阵) before relying on any adapter.
 - 证据基础为一次四天实战。除下述会话 API 运行时外，其他适配路径均未经实战验证，依赖前先看[支持矩阵](#support-matrix--支持矩阵)。
 
@@ -28,6 +28,8 @@ python3 -m unittest discover -s tests                            # verify the to
 cp examples/runtime-config.example.json ~/my-runtime.json        # private config, keep out of the repo
 # edit ~/my-runtime.json: replace every <placeholder>
 python3 scripts/iron_triangle_bridge.py --config ~/my-runtime.json doctor
+python3 scripts/iron_triangle_bridge.py --config ~/my-runtime.json skills install --platform codex
+python3 scripts/iron_triangle_bridge.py --config ~/my-runtime.json skills status --platform codex
 ```
 
 Then, from any agent window that installed the skill, just say:
@@ -90,6 +92,9 @@ Statuses: **verified** = exercised in the founding field run or by this reposito
 | Capability | Status | Evidence |
 |---|---|---|
 | Session-API runtime bridge (Kimi Code style): bind/create, dispatch with ack, turn-ended events, crash resume | **verified** | four-day field run + `tests/test_bridge.py`, `tests/test_conformance.py` |
+| Kimi Code 0.38 prompt contract (`running` / `queued` / `blocked` ack), exact-prompt abort, approval API, and OpenAPI contract gate enforced before dispatch | **verified** | live local API contract probe + `tests/test_bridge.py`; no UI transport |
+| Deterministic platform-skill installation and hash/read-back status (Codex / Claude Code / Kimi Code / Cursor) | **verified offline** | `tests/test_skill_install.py`, `tests/test_cli_lifecycle.py`; local installed-path read-back |
+| Supervised daemon self-retirement on bridge code/version change (supervisor relaunch loads new code; no manual reinstall, no mid-pass abort) | **verified offline** | `tests/test_cli_lifecycle.py` (`DaemonSelfRetireTests`); launchd `KeepAlive` / systemd `Restart=always` semantics |
 | Run narration language policy (`zh-CN` / `en` catalogs plus recognized third languages): automatic per-run `response_language` (explicit > config > task-script detection), jointly inherited by both roles | **verified** | `tests/test_language.py`; en path golden-locked byte-identical to v0.2; non-catalog languages fall back to English machine fields with an explicit reply-language directive |
 | Security canary: every sanitizer rule trips on a planted fixture while the public tree scans zero | **verified** | `tests/test_security_canary.py`, `src/iron_triangle/sanitizer.py` |
 | macOS launchd supervised relay (`install`/`uninstall`) | **verified (macOS)** | field run; dry-run plans tested cross-platform |
@@ -109,9 +114,9 @@ Statuses: **verified** = exercised in the founding field run or by this reposito
 
 ## Skill / 技能
 
-The canonical Agent-Skills-compatible source lives at [`skills/iron-triangle/`](skills/iron-triangle/SKILL.md) (lean `SKILL.md` + `references/` + `assets/`). Platform skills for **Codex, Claude Code, Kimi (session API), and Cursor** are generated from that single source by [`scripts/build_skills.py`](scripts/build_skills.py) into `skills/<platform>/iron-triangle/`; never edit generated output. Validate with [`scripts/validate_skill.py`](scripts/validate_skill.py). Any explicit 铁三角 task triggers the skill, and the receiving window becomes the arbiter.
+The canonical Agent-Skills-compatible source lives at [`skills/iron-triangle/`](skills/iron-triangle/SKILL.md) (lean `SKILL.md` + `references/` + `assets/`). Platform skills for **Codex, Claude Code, Kimi (session API), and Cursor** are generated from that single source by [`scripts/build_skills.py`](scripts/build_skills.py) into `skills/<platform>/iron-triangle/`; never edit generated output. Install one with `skills install --platform <codex|claude|kimi|cursor>` and verify both the public core hash and private runtime binding with `skills status`; a differing existing installation is replaced only with `--replace`, after a backup. Any explicit 铁三角 task triggers the skill, and the receiving window becomes the arbiter.
 
-技能单一事实源在 `skills/iron-triangle/`，符合 Agent Skills 开放规范；四个平台目录由生成器产出，勿手改。含「铁三角」的明确任务直接触发技能，收到口令的窗口自动成为主控。
+技能单一事实源在 `skills/iron-triangle/`，符合 Agent Skills 开放规范；四个平台目录由生成器产出，勿手改。用 `skills install --platform <平台>` 安装，用 `skills status` 核验公开核心哈希与本机私有运行绑定；替换已有不同版本必须显式加 `--replace`，安装器会先备份。含「铁三角」的明确任务直接触发技能，收到口令的窗口自动成为主控。
 
 ## Field origin / 实战来源
 
@@ -127,7 +132,7 @@ A receipt-backed case study of that run — measured role costs, the end-to-end 
 
 ## Roadmap / 路线图
 
-- v0.4 (planned — listed as a roadmap item only, **not implemented in this release**): `init` install wizard. One command that writes a schema-validated private runtime config outside the repo, probes the configured adapter, offers to install the platform skill, and prints the exact follow-up commands. v0.4 计划提供 `init` 安装向导：一条命令在仓库外生成通过 schema 校验的私有运行配置、探测适配器、可选安装平台技能并输出后续命令。本版本仅列入路线图，未实现。
+- v0.4 (planned — listed as a roadmap item only, **not implemented in this release**): `init` configuration wizard. v0.3.2 already installs and verifies a platform skill deterministically; `init` will additionally write a schema-validated private runtime config outside the repo, probe the configured adapter, and print the exact follow-up commands. v0.4 计划提供 `init` 配置向导：v0.3.2 已能确定性安装并核验平台技能；`init` 还将在仓库外生成通过 schema 校验的私有运行配置、探测适配器并输出后续命令。本版本仅列入路线图，未实现。
 - Remote CI first runs are done and green (see the support matrix); the private-vulnerability-reporting canary drill is **closed** (2026-08-22, advisory `GHSA-h5p7-vmmc-mpxc`, receipt `PVR-CANARY-20260822-R36`). The one remaining release follow-up is a maintainer UI action only: re-upload the social preview — the previously uploaded custom image now 404s and the repository page falls back to GitHub's automatic OpenGraph card ([release gates](docs/release-gates.md), [metadata checklist](docs/release/github-metadata.md)). 远程 CI 首跑已完成且全绿（见支持矩阵）；非所有者私密报告 canary 已闭合（2026-08-22，公告 `GHSA-h5p7-vmmc-mpxc`，回执 `PVR-CANARY-20260822-R36`）。剩余发布跟进仅一项主控 UI 动作：重新上传社交预览图——此前上传的自定义图现已 404，仓库页暂回落到 GitHub 自动 OpenGraph 卡片。
 
 ## Repository map / 仓库结构
@@ -156,13 +161,14 @@ A receipt-backed case study of that run — measured role costs, the end-to-end 
 - It does not grant permissions for deployment, destructive action, or external communication.
 - It does not treat an executor report as evidence or an internal health check as user acceptance.
 - It does not prescribe model brands, private infrastructure, or a vendor-specific API.
+- It does not treat screen control, clicking, typing, window focus, or a visible target window as a cross-application transport or receipt. Automatic operation requires a configured adapter; otherwise the skill must disclose degraded/manual mode and fail closed.
 
-它不要求普通短任务也使用三模型，不扩大部署/破坏性操作/外部通信权限，不把执行者报告当证据，不把内部健康检查当用户验收，也不绑定模型品牌、私有基础设施或厂商 API。
+它不要求普通短任务也使用三模型，不扩大部署/破坏性操作/外部通信权限，不把执行者报告当证据，不把内部健康检查当用户验收，也不绑定模型品牌、私有基础设施或厂商 API。屏幕控制、点击、输入、聚焦或“看得见目标窗口”都不算跨应用传输或收据；自动运行必须有已配置适配器，否则技能必须披露降级/手动模式并失败关闭。
 
 ## Status
 
-- Protocol `1.0-draft`; tool `0.3.1` (latest stable: [`v0.3.1`](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.1) — a patch that fixes the released-version identity inconsistency where the `v0.3.0` tag still self-reported `0.3.0-rc.1` in its README, runtime, skills, and assets; see [CHANGELOG](CHANGELOG.md). The published `v0.3.0` and `v0.3.0-rc.1` tags/releases are preserved unchanged as history; the earlier full-CI-matrix release-candidate receipts remain linked from the changelog); evidence base: one four-day field run.
+- Protocol `1.0-draft`; tool `0.3.2` (unreleased working tree; latest stable: [`v0.3.1`](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.1)); evidence base: one four-day field run. See [CHANGELOG](CHANGELOG.md) for the cross-application transport repair pending release.
 - Public release gate status: [`docs/release-gates.md`](docs/release-gates.md).
 - License: MIT. See [CHANGELOG](CHANGELOG.md), [CONTRIBUTING](CONTRIBUTING.md), [SECURITY](SECURITY.md).
 
-当前状态：协议 `1.0-draft`、工具 `0.3.1`（最新稳定版 [`v0.3.1`](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.1)：修复 `v0.3.0` 标签内 README、运行时、技能元数据与演示资产仍自报 `0.3.0-rc.1` 的发布身份不一致，见 [CHANGELOG](CHANGELOG.md)；已发布的 `v0.3.0` 与 `v0.3.0-rc.1` 标签按历史原样保留，此前的完整 CI 矩阵候选收据仍由变更日志链接）；证据基础为一次四天实战。发布门槛状态见 release-gates 文档；许可证 MIT。
+当前状态：协议 `1.0-draft`、工具 `0.3.2`（尚未发布的工作树；最新稳定版为 [`v0.3.1`](https://github.com/he62621-oss/iron-triangle-protocol/releases/tag/v0.3.1)）；证据基础为一次四天实战。待发布的跨应用传输根因修复见 [CHANGELOG](CHANGELOG.md)；发布门槛状态见 release-gates 文档；许可证 MIT。

@@ -2,6 +2,23 @@
 
 All notable changes to the Iron Triangle protocol tooling are documented here. Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/); versioning is [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Deterministic `skills install` / `skills status` lifecycle for Codex, Claude Code, Kimi Code, and Cursor. Installations are copied from the generated platform skill, carry a private local runtime binding, are hash/read-back verified, and require `--replace` (with a backup) before changing an existing divergent installation.
+- Read-only OpenAPI prompt-contract gating enforced before every send: `preflight` and `doctor --live` report compatibility, `launch` refuses before any window is bound, and the watcher/arbiter dispatch path fails closed without transmitting when the live acknowledgement contract is unreadable or publishes unknown states.
+- Supervised daemon self-retirement on bridge change: the daemon fingerprints its package sources, entry script, and tool version each pass, finishes the current pass, then exits cleanly when the identity changes so launchd/systemd relaunch loads updated code — no manual reinstall, no interrupted in-flight prompt, run state and cursors untouched.
+- Session-API lifecycle operations for pending approval discovery/resolution and exact prompt cancellation.
+- Per-workspace single-flight reservation. A second nonterminal run against the same canonical workspace is rejected unless the user explicitly supplies `--allow-concurrent`.
+
+### Fixed
+
+- Kimi Code 0.38 prompt acknowledgements are mapped from the live `running` / `queued` / `blocked` states to the protocol's destination-accepted state. The bridge previously recognized only the obsolete `accepted` spelling, misclassified successful API dispatch as transport-unknown, and drove users toward manual recovery.
+- `arbiter --decision stop` now aborts only prompt IDs durably owned by that run and claims `stopped` only after destination confirmation. Kimi's exact-prompt `40903 not active` and `40402 prompt not found` outcomes are treated as idempotent already-terminal receipts; every other unknown cancellation leaves the run suspended. Confirmed stop also clears stale crash-window dispatch state, and terminal runs can no longer be reopened by a racing watcher.
+- A definitely-rejected dispatch (contract-gate refusal or explicit HTTP rejection) now clears its crash-window pending record when the line suspends. Later watcher passes keep the run suspended instead of escalating the known non-delivery into `transport-unknown`; genuinely unknown deliveries still keep their pending record for human ack or `--retry-new`.
+- The portable skill now separates the receiving controller from the target worker runtime, requires the configured local bridge binding for automatic cross-application operation, and explicitly forbids Computer Use, focus/click/type automation, or visible window presence from serving as dispatch, approval, stop, recovery, or receipt evidence.
+
 ## [0.3.1] - 2026-08-23
 
 Patch release fixing the released-version identity inconsistency of `v0.3.0`: the stable tag was cut from a tree whose runtime `TOOL_VERSION`, README status lines, skill manifests, recorded demo, and social preview still self-identified as `0.3.0-rc.1`, with the changes below still filed under *Unreleased*. History stays honest — the published `v0.3.0` and `v0.3.0-rc.1` tags/releases are preserved unchanged. This release unifies every current-state version source to `0.3.1`, dates these entries properly, and regenerates the derived skills and assets through their generators (no manual drift). No normative protocol change.

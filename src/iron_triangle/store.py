@@ -61,6 +61,27 @@ def iter_runs(config: dict[str, Any]) -> Iterator[dict[str, Any]]:
             continue
 
 
+def workspace_conflicts(config: dict[str, Any], cwd: pathlib.Path) -> list[dict[str, Any]]:
+    """Non-terminal runs bound to ``cwd``.
+
+    Suspended and unknown-delivery runs intentionally remain conflicts: a new
+    run must not race work whose destination state is unresolved.
+    """
+    target = cwd.resolve()
+    terminal = {"complete", "stopped"}
+    conflicts: list[dict[str, Any]] = []
+    for run in iter_runs(config):
+        if run.get("phase") in terminal:
+            continue
+        try:
+            run_cwd = expand_path(str(run.get("cwd", ""))).resolve()
+        except (OSError, ValueError):
+            continue
+        if run_cwd == target:
+            conflicts.append(run)
+    return conflicts
+
+
 def run_dir_from_record(run: dict[str, Any]) -> pathlib.Path:
     return pathlib.Path(run["ledger_path"]).parent
 

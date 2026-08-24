@@ -7,6 +7,7 @@ ever made by this suite.
 
 from __future__ import annotations
 
+import argparse
 import json
 import pathlib
 import subprocess
@@ -59,7 +60,7 @@ class CliLifecycleTests(unittest.TestCase):
         result = self.cli("version")
         self.assertEqual(result.returncode, 0, result.stderr)
         payload = json.loads(result.stdout)
-        self.assertEqual(payload["tool_version"], "0.3.1")
+        self.assertEqual(payload["tool_version"], "0.3.2")
         self.assertEqual(payload["config_schema_version"], 2)
 
     def test_install_dry_run_renders_plan_without_system_contact(self):
@@ -104,6 +105,35 @@ class CliLifecycleTests(unittest.TestCase):
         result = self.cli("status")
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(json.loads(result.stdout), [])
+
+    def test_skill_install_and_status_have_hash_verified_readback(self):
+        target_root = self.home / "codex-skills"
+        install = self.cli(
+            "skills",
+            "install",
+            "--platform",
+            "codex",
+            "--target-root",
+            str(target_root),
+        )
+        self.assertEqual(install.returncode, 0, install.stderr)
+        installed = json.loads(install.stdout)[0]
+        self.assertTrue(installed["core_match"])
+        self.assertTrue(installed["runtime_binding_match"])
+        self.assertEqual(installed["runtime_binding"], "configured")
+
+        status = self.cli(
+            "skills",
+            "status",
+            "--platform",
+            "codex",
+            "--target-root",
+            str(target_root),
+        )
+        self.assertEqual(status.returncode, 0, status.stderr)
+        readback = json.loads(status.stdout)[0]
+        self.assertEqual(readback["source_hash"], readback["installed_hash"])
+        self.assertTrue(readback["runtime_binding_match"])
 
     def test_repair_is_idempotent_and_writes_only_inside_state_dir(self):
         first = self.cli("repair")
@@ -171,6 +201,105 @@ class CliLifecycleTests(unittest.TestCase):
                 "token_file": str(self.home / "token"),
             }
         }
+
+
+class DaemonSelfRetireTests(unittest.TestCase):
+    """The supervised daemon must retire on code change so the supervisor
+    relaunches with the updated bridge; fully in-process and isolated."""
+
+    def setUp(self) -> None:
+        self.temp = tempfile.TemporaryDirectory()
+        self.root = pathlib.Path(self.temp.name)
+        self.mod_a = self.root / "mod_a.py"
+        self.mod_b = self.root / "mod_b.py"
+        self.mod_a.write_text("a = 1\n", encoding="utf-8")
+        self.mod_b.write_text("b = 2\n", encoding="utf-8")
+        self.state = self.root / "state"
+        self.config: dict = {"state_dir": str(self.state), "poll_interval_seconds": 2}
+
+    def tearDown(self) -> None:
+        self.temp.cleanup()
+
+    def test_bridge_identity_is_stable_and_change_sensitive(self):
+        from iron_triangle.cli import bridge_identity
+
+        baseline = bridge_identity([self.mod_a, self.mod_b])
+        self.assertEqual(baseline, bridge_identity([self.mod_b, self.mod_a]))
+        self.mod_b.write_text("b = 3\n", encoding="utf-8")
+        self.assertNotEqual(baseline, bridge_identity([self.mod_a, self.mod_b]))
+        missing = self.root / "gone.py"
+        self.assertNotEqual(bridge_identity([missing]), bridge_identity([]))
+
+    def test_bridge_identity_covers_tool_version(self):
+        from unittest import mock
+
+        from iron_triangle import cli
+
+        baseline = cli.bridge_identity([self.mod_a])
+        with mock.patch.object(cli, "TOOL_VERSION", "0.0.0-test"):
+            self.assertNotEqual(baseline, cli.bridge_identity([self.mod_a]))
+
+    def test_daemon_retires_between_passes_when_code_changes(self):
+        from unittest import mock
+
+        from iron_triangle import cli
+
+        passes: list[int] = []
+
+        def fake_watch_set(bridge_path):
+            return [self.mod_a, self.mod_b]
+
+        def fake_watch_once(*args, **kwargs):
+            passes.append(1)
+            return len(passes)
+
+        def fake_sleep(_seconds):
+            # After the first full pass, simulate an upgrade landing on disk.
+            if len(passes) == 1:
+                self.mod_b.write_text("b = 3\n", encoding="utf-8")
+
+        with (
+            mock.patch.object(cli, "daemon_watch_set", fake_watch_set),
+            mock.patch.object(cli, "watch_once", fake_watch_once),
+            mock.patch("time.sleep", fake_sleep),
+        ):
+            cli.cmd_daemon(argparse.Namespace(), self.config, self.root / "runtime.json")
+
+        self.assertEqual(len(passes), 1, "daemon must finish the pass, then exit — not abandon it midway")
+        lines = (self.state / "daemon-errors.jsonl").read_text(encoding="utf-8").splitlines()
+        events = [json.loads(line) for line in lines]
+        self.assertEqual(events[-1]["kind"], "bridge-identity-changed")
+
+    def test_daemon_keeps_running_while_identity_holds(self):
+        from unittest import mock
+
+        from iron_triangle import cli
+
+        passes: list[int] = []
+
+        def fake_watch_set(bridge_path):
+            return [self.mod_a]
+
+        def fake_watch_once(*args, **kwargs):
+            passes.append(1)
+            return len(passes)
+
+        sleeps: list[int] = []
+
+        def fake_sleep(seconds):
+            sleeps.append(seconds)
+            if len(sleeps) >= 3:
+                raise KeyboardInterrupt  # escape the infinite loop
+
+        with (
+            mock.patch.object(cli, "daemon_watch_set", fake_watch_set),
+            mock.patch.object(cli, "watch_once", fake_watch_once),
+            mock.patch("time.sleep", fake_sleep),
+        ):
+            with self.assertRaises(KeyboardInterrupt):
+                cli.cmd_daemon(argparse.Namespace(), self.config, self.root / "runtime.json")
+
+        self.assertEqual(len(passes), 3)
 
 
 if __name__ == "__main__":

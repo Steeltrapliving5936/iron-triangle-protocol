@@ -14,13 +14,14 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import hashlib
 import pathlib
 import re
 import sys
 import uuid
 from typing import Any
 
-from . import CONFIG_SCHEMA_VERSION, TOOL_VERSION, config as config_mod, i18n, policy, store, supervisor
+from . import CONFIG_SCHEMA_VERSION, TOOL_VERSION, config as config_mod, i18n, policy, skill_install, store, supervisor
 from .errors import BridgeError
 from .runner import execute_actions, idle_limit_from_config, watch_once
 from .sessionapi import SessionApiBackend, default_thinking, model_label
@@ -58,6 +59,7 @@ def _print_json(value: Any) -> None:
 
 def cmd_preflight(args: argparse.Namespace, config: dict[str, Any]) -> None:
     backend = SessionApiBackend(config)
+    report = backend.probe()
     models = backend.client.models()
     sessions = backend.client.sessions()
     adapter_cfg = config["adapters"][backend.adapter_id]
@@ -65,9 +67,9 @@ def cmd_preflight(args: argparse.Namespace, config: dict[str, Any]) -> None:
     reviewer = backend.resolve_model(None, adapter_cfg.get("default_reviewer_model"))
     event_dir = adapter_cfg.get("event_dir")
     output = {
-        "ok": True,
+        "ok": report.api_reachable and report.prompt_contract_compatible,
         "adapter": backend.adapter_id,
-        "capability_tier": backend.probe().tier,
+        "capability_tier": report.tier,
         "models_available": len(models),
         "sessions_visible": len(sessions),
         "defaults": {
@@ -79,8 +81,15 @@ def cmd_preflight(args: argparse.Namespace, config: dict[str, Any]) -> None:
             "configured": bool(event_dir),
             "available": bool(event_dir and expand_path(str(event_dir)).is_dir()),
         },
+        "prompt_contract": {
+            "compatible": report.prompt_contract_compatible,
+            "statuses": list(report.prompt_statuses),
+        },
+        "notes": report.notes,
     }
     _print_json(output)
+    if not output["ok"]:
+        sys.exit(2)
 
 
 def cmd_models(args: argparse.Namespace, config: dict[str, Any]) -> None:
@@ -186,7 +195,7 @@ def _model_receipt(
 
 
 def cmd_launch(args: argparse.Namespace, config: dict[str, Any], config_path: pathlib.Path) -> None:
-    cwd = expand_path(args.cwd)
+    cwd = expand_path(args.cwd).resolve()
     if not cwd.is_dir():
         raise BridgeError(f"workspace directory does not exist: {cwd}")
     task = args.task
@@ -196,6 +205,9 @@ def cmd_launch(args: argparse.Namespace, config: dict[str, Any], config_path: pa
         raise BridgeError("task text is required")
 
     backend = SessionApiBackend(config)
+    gate = backend.contract_gate()
+    if gate is not None:
+        raise BridgeError(f"refusing to launch: {gate}")
     adapter_cfg = config["adapters"][backend.adapter_id]
     executor_model = backend.resolve_model(args.executor_model, adapter_cfg.get("default_executor_model"))
     reviewer_model = backend.resolve_model(args.reviewer_model, adapter_cfg.get("default_reviewer_model"))
@@ -237,38 +249,78 @@ def cmd_launch(args: argparse.Namespace, config: dict[str, Any], config_path: pa
         "executor_title": executor_title,
         "reviewer_title": reviewer_title,
     }
+    conflicts = store.workspace_conflicts(config, cwd)
+    allow_concurrent = bool(getattr(args, "allow_concurrent", False))
+    plan["workspace_conflicts"] = [
+        {"run_id": item.get("run_id"), "phase": item.get("phase")} for item in conflicts
+    ]
+    if conflicts and not allow_concurrent:
+        summary = ", ".join(f"{item.get('run_id')} ({item.get('phase')})" for item in conflicts)
+        raise BridgeError(
+            "workspace already has a non-terminal Iron Triangle run: "
+            f"{summary}; stop/close it first, or explicitly pass --allow-concurrent"
+        )
     if args.dry_run:
         _print_json({"dry_run": True, "plan": plan})
         return
 
-    run_id = f"it-{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
-    directory = store.run_dir(config, run_id)
-    directory.mkdir(parents=True, exist_ok=False)
+    workspace_key = hashlib.sha256(str(cwd).encode("utf-8")).hexdigest()
+    workspace_lock = store.state_dir(config) / "workspace-locks" / f"{workspace_key}.lock"
+    with exclusive_lock(workspace_lock):
+        conflicts = store.workspace_conflicts(config, cwd)
+        if conflicts and not allow_concurrent:
+            summary = ", ".join(f"{item.get('run_id')} ({item.get('phase')})" for item in conflicts)
+            raise BridgeError(
+                "workspace already has a non-terminal Iron Triangle run: "
+                f"{summary}; stop/close it first, or explicitly pass --allow-concurrent"
+            )
+        run_id = f"it-{dt.datetime.now().strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
+        directory = store.run_dir(config, run_id)
+        directory.mkdir(parents=True, exist_ok=False)
+        reservation: dict[str, Any] = {
+            "schema_version": CONFIG_SCHEMA_VERSION,
+            "run_id": run_id,
+            "created_at": utc_now(),
+            "updated_at": utc_now(),
+            "cwd": str(cwd),
+            "task": task.strip(),
+            "ledger_path": str(directory / "ledger.md"),
+            "phase": "launching",
+            "launch_reservation": True,
+        }
+        store.save_run(config, reservation)
     sessions = backend.client.sessions()
-    executor_binding = backend.bind_or_create(
-        role="executor",
-        sessions=sessions,
-        cwd=cwd,
-        title=executor_title,
-        model=executor_model,
-        thinking=executor_thinking,
-        permission_mode=permission_mode,
-        existing=args.executor_session,
-        language=language,
-    )
-    reviewer_binding = backend.bind_or_create(
-        role="reviewer",
-        sessions=sessions,
-        cwd=cwd,
-        title=reviewer_title,
-        model=reviewer_model,
-        thinking=reviewer_thinking,
-        permission_mode=permission_mode,
-        existing=args.reviewer_session,
-        language=language,
-    )
-    if executor_binding.session_id == reviewer_binding.session_id:
-        raise BridgeError("executor and reviewer must use distinct sessions/windows")
+    try:
+        executor_binding = backend.bind_or_create(
+            role="executor",
+            sessions=sessions,
+            cwd=cwd,
+            title=executor_title,
+            model=executor_model,
+            thinking=executor_thinking,
+            permission_mode=permission_mode,
+            existing=args.executor_session,
+            language=language,
+        )
+        reviewer_binding = backend.bind_or_create(
+            role="reviewer",
+            sessions=sessions,
+            cwd=cwd,
+            title=reviewer_title,
+            model=reviewer_model,
+            thinking=reviewer_thinking,
+            permission_mode=permission_mode,
+            existing=args.reviewer_session,
+            language=language,
+        )
+        if executor_binding.session_id == reviewer_binding.session_id:
+            raise BridgeError("executor and reviewer must use distinct sessions/windows")
+    except Exception as exc:
+        reservation["phase"] = "suspended"
+        reservation["suspension_reason"] = "launch-failed"
+        reservation["arbiter_reason"] = str(exc)
+        store.save_run(config, reservation)
+        raise
     # Independence disclosure (R-5 audit): reaching this line proves the two
     # roles never share one session, so the level is verified by construction.
     independence = {"level": "separate-sessions"}
@@ -292,6 +344,7 @@ def cmd_launch(args: argparse.Namespace, config: dict[str, Any], config_path: pa
         "dispatch_counter": 0,
         "pending_dispatch": None,
         "last_delivery": None,
+        "launch_reservation": False,
     }
     store.append_ledger(
         config,
@@ -373,8 +426,26 @@ def cmd_daemon(args: argparse.Namespace, config: dict[str, Any], config_path: pa
 
     directory = store.state_dir(config)
     interval = max(2, int(config.get("poll_interval_seconds", 15)))
+    bridge_path = _bridge_entry_path()
+    identity = bridge_identity(daemon_watch_set(bridge_path))
     with exclusive_lock(directory / "daemon.lock", blocking=False):
         while True:
+            if bridge_identity(daemon_watch_set(bridge_path)) != identity:
+                # The code on disk no longer matches the code in memory: retire
+                # cleanly between passes so the supervisor's KeepAlive /
+                # Restart=always relaunch loads the updated bridge without any
+                # manual reinstall. Run state, delivery ids, and event cursors
+                # are durable in state_dir, and no pass is abandoned midway,
+                # so no in-flight prompt is interrupted.
+                append_jsonl(
+                    directory / "daemon-errors.jsonl",
+                    {
+                        "observed_at": utc_now(),
+                        "kind": "bridge-identity-changed",
+                        "detail": "bridge code or version changed; daemon exiting for supervisor relaunch",
+                    },
+                )
+                return
             try:
                 watch_once(
                     config,
@@ -385,6 +456,28 @@ def cmd_daemon(args: argparse.Namespace, config: dict[str, Any], config_path: pa
             except Exception as exc:  # daemon boundary: record and survive
                 append_jsonl(directory / "daemon-errors.jsonl", {"observed_at": utc_now(), "error": repr(exc)})
             time.sleep(interval)
+
+
+def daemon_watch_set(bridge_path: pathlib.Path) -> list[pathlib.Path]:
+    """Files whose on-disk change means this process is executing stale code."""
+    package = pathlib.Path(__file__).resolve().parent
+    paths = sorted(package.glob("*.py"))
+    paths.append(pathlib.Path(bridge_path).resolve())
+    return list(dict.fromkeys(paths))
+
+
+def bridge_identity(paths: list[pathlib.Path]) -> str:
+    """Deterministic fingerprint of tool version plus watched source files."""
+    digest = hashlib.sha256()
+    digest.update(f"tool-version:{TOOL_VERSION}\0".encode("utf-8"))
+    for path in sorted(paths):
+        try:
+            data = path.read_bytes()
+        except OSError:
+            data = b"<unreadable-or-missing>"
+        digest.update(str(path).encode("utf-8") + b"\0")
+        digest.update(data + b"\0")
+    return digest.hexdigest()
 
 
 # --- reviewer decision -----------------------------------------------------------
@@ -517,11 +610,137 @@ def _role_for_phase(run: dict[str, Any]) -> str:
     return "executor"
 
 
+def _owned_prompt_ids(run: dict[str, Any]) -> list[tuple[str, str]]:
+    """Return the newest prompt id owned by this run for each role.
+
+    Legacy run records may only have ``last_delivery`` or
+    ``pending_dispatch``; both are accepted as migration evidence. Busy state
+    is deliberately ignored because a reused session may be running a prompt
+    owned by a different run.
+    """
+    owned: dict[str, str] = {}
+    for role in ("executor", "reviewer"):
+        prompt_id = run.get(f"{role}_prompt_id")
+        if prompt_id:
+            owned[role] = str(prompt_id)
+    for record in (run.get("last_delivery"), run.get("pending_dispatch")):
+        if not isinstance(record, dict):
+            continue
+        role = record.get("role")
+        prompt_id = record.get("prompt_id")
+        if role in {"executor", "reviewer"} and prompt_id:
+            owned.setdefault(str(role), str(prompt_id))
+    return [(role, owned[role]) for role in ("executor", "reviewer") if role in owned]
+
+
+def _abort_owned_prompts(backend: SessionApiBackend, run: dict[str, Any]) -> list[dict[str, Any]]:
+    receipts: list[dict[str, Any]] = []
+    for role, prompt_id in _owned_prompt_ids(run):
+        binding_record = run.get(role)
+        if not isinstance(binding_record, dict) or not binding_record.get("session_id"):
+            receipts.append(
+                {"role": role, "prompt_id": prompt_id, "status": "unknown", "detail": "binding missing"}
+            )
+            continue
+        receipt = backend.abort_prompt(binding=_binding_from_record(binding_record), prompt_id=prompt_id)
+        receipts.append(
+            {
+                "role": role,
+                "prompt_id": receipt.prompt_id,
+                "status": receipt.status,
+                "detail": receipt.detail,
+            }
+        )
+    return receipts
+
+
+def _binding_from_record(record: dict[str, Any]):
+    from .backend import Binding
+
+    return Binding(
+        role=str(record.get("role", "")),
+        adapter=str(record.get("adapter", "")),
+        session_id=str(record["session_id"]),
+        title=str(record.get("title", "")),
+        created=bool(record.get("created")),
+        model=str(record.get("model", "")),
+        thinking=record.get("thinking"),
+        permission_mode=str(record.get("permission_mode", "auto")),
+    )
+
+
+def cmd_approvals(args: argparse.Namespace, config: dict[str, Any]) -> None:
+    run = store.load_run(config, args.run_id)
+    backend = SessionApiBackend(config)
+    roles = (args.role,) if args.role else ("executor", "reviewer")
+    output: list[dict[str, Any]] = []
+    for role in roles:
+        binding = run.get(role) or {}
+        if not binding.get("session_id"):
+            continue
+        for item in backend.client.approvals(session_id=str(binding["session_id"])):
+            output.append(
+                {
+                    "role": role,
+                    "approval_id": item.get("approval_id"),
+                    "tool_name": item.get("tool_name"),
+                    "action": item.get("action"),
+                    "created_at": item.get("created_at"),
+                    "expires_at": item.get("expires_at"),
+                    "tool_input_display": item.get("tool_input_display"),
+                }
+            )
+    _print_json(output)
+
+
+def cmd_resolve_approval(args: argparse.Namespace, config: dict[str, Any]) -> None:
+    lock = store.run_dir(config, args.run_id) / "run.lock"
+    with exclusive_lock(lock):
+        run = store.load_run(config, args.run_id)
+        binding = run.get(args.role) or {}
+        if not binding.get("session_id"):
+            raise BridgeError(f"run has no {args.role} binding")
+        backend = SessionApiBackend(config)
+        result = backend.client.resolve_approval(
+            session_id=str(binding["session_id"]),
+            approval_id=args.approval_id,
+            decision=args.decision,
+            feedback=args.feedback,
+        )
+        if result.get("resolved") is not True:
+            raise BridgeError("destination did not confirm approval resolution")
+        store.run_event(
+            config,
+            args.run_id,
+            "approval_resolved",
+            role=args.role,
+            approval_id=args.approval_id,
+            decision=args.decision,
+        )
+        if run.get("phase") == "blocked-input" and run.get("blocked_role") == args.role:
+            run["phase"] = run.get("blocked_previous_phase", f"await-{args.role}")
+            run.pop("blocked_role", None)
+            run.pop("blocked_previous_phase", None)
+            run.pop("arbiter_reason", None)
+        store.save_run(config, run)
+    _print_json(
+        {
+            "resolved": True,
+            "run_id": args.run_id,
+            "role": args.role,
+            "approval_id": args.approval_id,
+            "decision": args.decision,
+            "phase": run.get("phase"),
+        }
+    )
+
+
 def cmd_arbiter(args: argparse.Namespace, config: dict[str, Any], config_path: pathlib.Path) -> None:
     message = args.message
     if args.message_file:
         message = expand_path(args.message_file).read_text(encoding="utf-8")
     lock = store.run_dir(config, args.run_id) / "run.lock"
+    stop_error: str | None = None
     with exclusive_lock(lock):
         run = store.load_run(config, args.run_id)
         phase = run.get("phase")
@@ -604,21 +823,54 @@ def cmd_arbiter(args: argparse.Namespace, config: dict[str, Any], config_path: p
             if phase == "complete":
                 raise BridgeError("run is already complete")
             final_message = (message or i18n.text(i18n.catalog_for(language), "arbiter_stop_default")).strip()
-            store.append_ledger(
-                config,
-                args.run_id,
-                i18n.text(
-                    i18n.catalog_for(language),
-                    "ledger_stop",
-                    sequence=sequence,
-                    timestamp=utc_now(),
-                    message=final_message,
-                ),
-            )
-            run["phase"] = "stopped"
-            run["arbiter_reason"] = final_message
-            store.run_event(config, args.run_id, "arbiter_stop", ledger_sequence=f"R-{sequence}")
+            backend = SessionApiBackend(config)
+            receipts = _abort_owned_prompts(backend, run)
+            run["stop_receipts"] = receipts
+            unknown = [item for item in receipts if item["status"] == "unknown"]
+            receipt_text = json.dumps(receipts, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            if unknown:
+                stop_error = "destination stop could not be confirmed; replacement launch remains forbidden"
+                store.append_ledger(
+                    config,
+                    args.run_id,
+                    i18n.text(
+                        i18n.catalog_for(language),
+                        "ledger_stop_unconfirmed",
+                        sequence=sequence,
+                        timestamp=utc_now(),
+                        receipts=receipt_text,
+                    ),
+                )
+                run["phase"] = "suspended"
+                run["suspension_reason"] = "stop-unconfirmed"
+                run["arbiter_reason"] = stop_error
+                store.write_outbox(config, run, "NEEDS_ARBITER", stop_error)
+                store.run_event(config, args.run_id, "arbiter_stop_unconfirmed", ledger_sequence=f"R-{sequence}")
+            else:
+                store.append_ledger(
+                    config,
+                    args.run_id,
+                    i18n.text(
+                        i18n.catalog_for(language),
+                        "ledger_stop",
+                        sequence=sequence,
+                        timestamp=utc_now(),
+                        message=final_message,
+                        receipts=receipt_text,
+                    ),
+                )
+                run["phase"] = "stopped"
+                run["stopped_at"] = utc_now()
+                run["arbiter_reason"] = final_message
+                # A destination-confirmed stop resolves any crash-window
+                # dispatch record. Leaving it behind lets an older or racing
+                # watcher incorrectly reopen the terminal run.
+                run["pending_dispatch"] = None
+                run.pop("suspension_reason", None)
+                store.run_event(config, args.run_id, "arbiter_stop", ledger_sequence=f"R-{sequence}")
         store.save_run(config, run)
+    if stop_error:
+        raise BridgeError(stop_error)
     _print_json({"accepted": True, "run_id": args.run_id, "decision": args.decision, "phase": run["phase"]})
 
 
@@ -702,8 +954,9 @@ def cmd_doctor(args: argparse.Namespace, config_path: pathlib.Path) -> None:
                     report = SessionApiBackend(live_config).probe()
                     check(
                         f"adapter.{adapter_id}",
-                        report.api_reachable,
+                        report.api_reachable and report.prompt_contract_compatible,
                         f"tier={report.tier} models={report.models_available} sessions={report.sessions_visible}"
+                        + f" prompt_statuses={','.join(report.prompt_statuses) or 'unverified'}"
                         + (("; " + "; ".join(report.notes)) if report.notes else ""),
                     )
                 except BridgeError as exc:
@@ -784,12 +1037,42 @@ def cmd_version(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_skills(args: argparse.Namespace, config_path: pathlib.Path | None) -> None:
+    platforms = skill_install.PLATFORMS if args.platform == "all" else (args.platform,)
+    if args.target_root and len(platforms) != 1:
+        raise BridgeError("--target-root requires one explicit platform, not all")
+    target_root = expand_path(args.target_root) if args.target_root else None
+    output = []
+    for platform in platforms:
+        if args.skills_action == "status":
+            output.append(
+                skill_install.skill_status(
+                    platform,
+                    target_root=target_root,
+                    config_path=config_path,
+                    bridge_path=_bridge_entry_path(),
+                )
+            )
+        else:
+            output.append(
+                skill_install.install_skill(
+                    platform,
+                    target_root=target_root,
+                    config_path=config_path,
+                    bridge_path=_bridge_entry_path(),
+                    replace=args.replace,
+                    dry_run=args.dry_run,
+                )
+            )
+    _print_json(output)
+
+
 # --- parser ------------------------------------------------------------------------
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Iron Triangle bridge and product CLI")
-    parser.add_argument("--config", required=True, help="private runtime JSON config")
+    parser.add_argument("--config", help="private runtime JSON config")
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("preflight")
@@ -817,6 +1100,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="run response_language (explicit override; default: config, then task-language auto-detection, then en)",
     )
     launch.add_argument("--dry-run", action="store_true")
+    launch.add_argument(
+        "--allow-concurrent",
+        action="store_true",
+        help="explicitly allow another non-terminal run in the same workspace",
+    )
 
     sub.add_parser("watch-once")
     sub.add_parser("daemon")
@@ -837,6 +1125,17 @@ def build_parser() -> argparse.ArgumentParser:
     resume.add_argument("--run-id", required=True)
     resume.add_argument("--ack-prompt-id", help="confirm an unknown-state dispatch was delivered")
     resume.add_argument("--retry-new", action="store_true", help="authorize replacing an undelivered dispatch")
+
+    approvals = sub.add_parser("approvals")
+    approvals.add_argument("--run-id", required=True)
+    approvals.add_argument("--role", choices=["executor", "reviewer"])
+
+    resolve_approval = sub.add_parser("resolve-approval")
+    resolve_approval.add_argument("--run-id", required=True)
+    resolve_approval.add_argument("--role", choices=["executor", "reviewer"], required=True)
+    resolve_approval.add_argument("--approval-id", required=True)
+    resolve_approval.add_argument("--decision", choices=["approved", "rejected", "cancelled"], required=True)
+    resolve_approval.add_argument("--feedback")
 
     arbiter = sub.add_parser("arbiter")
     arbiter.add_argument("--run-id", required=True)
@@ -865,17 +1164,32 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("upgrade")
 
     sub.add_parser("version")
+
+    skills = sub.add_parser("skills")
+    skills_sub = skills.add_subparsers(dest="skills_action", required=True)
+    for action in ("status", "install"):
+        command = skills_sub.add_parser(action)
+        command.add_argument("--platform", choices=[*skill_install.PLATFORMS, "all"], default="all")
+        command.add_argument("--target-root", help="override the platform skill root (single platform only)")
+        if action == "install":
+            command.add_argument("--replace", action="store_true", help="backup and replace a differing installed skill")
+            command.add_argument("--dry-run", action="store_true")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    config_path = expand_path(args.config)
     try:
         if args.command == "version":
             cmd_version(args)
             return 0
+        config_path = expand_path(args.config) if args.config else None
+        if args.command == "skills":
+            cmd_skills(args, config_path)
+            return 0
+        if config_path is None:
+            raise BridgeError(f"--config is required for {args.command}")
         if args.command == "upgrade":
             cmd_upgrade(args, config_path)
             return 0
@@ -901,6 +1215,10 @@ def main(argv: list[str] | None = None) -> int:
             cmd_status(args, config)
         elif args.command == "resume":
             cmd_resume(args, config)
+        elif args.command == "approvals":
+            cmd_approvals(args, config)
+        elif args.command == "resolve-approval":
+            cmd_resolve_approval(args, config)
         elif args.command == "arbiter":
             cmd_arbiter(args, config, config_path)
         elif args.command == "install":

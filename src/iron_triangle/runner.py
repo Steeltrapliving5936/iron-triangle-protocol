@@ -162,7 +162,9 @@ def execute_actions(
                     "prompt_id": delivery.prompt_id or prompt_id,
                     "accepted_at": utc_now(),
                     "status": "accepted",
+                    "detail": delivery.detail,
                 }
+                run[f"{role}_prompt_id"] = delivery.prompt_id or prompt_id
                 run[f"{role}_baseline_seq"] = baseline
                 run[f"{role}_event_offset"] = offset
                 run["last_progress_at"] = utc_now()
@@ -181,6 +183,14 @@ def execute_actions(
                 # follow-up Transition cannot overwrite the suspension.
                 kind = "dispatch_unknown" if delivery.status == policy.DELIVERY_UNKNOWN else "dispatch_rejected"
                 store.run_event(config, run["run_id"], kind, role=role, detail=delivery.detail)
+                if delivery.status == policy.DELIVERY_REJECTED:
+                    # Definite non-delivery (contract-gate refusal or explicit
+                    # HTTP rejection): nothing is in flight, so the crash-window
+                    # record must not linger and later watcher passes must not
+                    # escalate this known outcome into transport-unknown. A
+                    # genuinely unknown delivery keeps its pending record for
+                    # human ack/--retry-new recovery.
+                    run["pending_dispatch"] = None
                 execute_actions(
                     config=config,
                     config_path=config_path,
@@ -283,6 +293,8 @@ def watch_once(
     changed_count = 0
     for candidate in store.iter_runs(config):
         phase = candidate.get("phase")
+        if phase in {"complete", "stopped"}:
+            continue
         if phase not in policy.ACTIVE_PHASES and not candidate.get("pending_dispatch"):
             continue
         lock = store.run_dir(config, candidate["run_id"]) / "run.lock"

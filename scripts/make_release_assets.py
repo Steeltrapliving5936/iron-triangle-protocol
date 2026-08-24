@@ -50,6 +50,7 @@ FONT_SIZE, LINE_HEIGHT, PAD_X, CHROME = 13, 20, 14, 36
 SOCIAL_WIDTH, SOCIAL_HEIGHT = 1280, 640
 
 sys.path.insert(0, str(ROOT / "src"))
+from iron_triangle import TOOL_VERSION  # noqa: E402
 from iron_triangle.sanitizer import scan_text  # noqa: E402
 
 
@@ -510,7 +511,7 @@ def social_svg() -> str:
                 f'font-family="Menlo, monospace" font-size="14" fill="{color}">{xml(piece)}</text>'
             )
     parts += [
-        '<text x="72" y="596" font-family="Menlo, monospace" font-size="16" fill="#8b949e">protocol 1.0-draft · tool 0.3.1 · MIT · evidence: one four-day field run</text>',
+        f'<text x="72" y="596" font-family="Menlo, monospace" font-size="16" fill="#8b949e">protocol 1.0-draft · tool {TOOL_VERSION} · MIT · evidence: one four-day field run</text>',
         "</svg>",
     ]
     return "\n".join(parts)

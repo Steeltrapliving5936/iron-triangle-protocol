@@ -9,6 +9,8 @@ Implement the four primitives with the narrowest native mechanism available.
 
 Keep the reviewer's independent reproduction instructions separate from the executor's report; the reviewer reruns checks personally.
 
+The arbiter being Claude Code does not determine the worker app. For a Kimi Code or other cross-app target, use the configured local runtime plus that target's mapping. Missing automatic transport is a disclosed degraded mode, never permission to control another app's UI.
+
 ## Rotation
 
 Pause dispatch, append the handoff, replace all three role bindings together, reset the watcher baseline to the recorded cursor, read back the mappings, then send one resume prompt per role.
