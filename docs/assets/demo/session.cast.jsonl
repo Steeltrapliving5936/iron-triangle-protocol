@@ -1,134 +1,134 @@
 {"type": "header", "recorded_from": "fresh clean clone of the release-candidate tree", "python": "/Library/Developer/CommandLineTools/usr/bin/python3", "commands": ["python3 -m unittest discover -s tests", "cp examples/runtime-config.example.json ~/my-runtime.json", "# ~/my-runtime.json: every <placeholder> replaced (demo-local values)", "python3 -m json.tool ~/my-runtime.json > /dev/null && echo \"config ready\"", "python3 scripts/iron_triangle_bridge.py --config ~/my-runtime.json doctor", "python3 src/iron_triangle/sanitizer.py .", "python3 scripts/build_skills.py --check"], "note": "output lines are captured bytes from real executions; prompt lines are rendered by the recorder"}
 {"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % python3 -m unittest discover -s tests"}
-{"type": "output", "t": 2.299, "text": "..........................................{"}
-{"type": "output", "t": 2.299, "text": "  \"launched\": true,"}
-{"type": "output", "t": 2.299, "text": "  \"run_id\": \"it-20260823-001701-3394a2\","}
-{"type": "output", "t": 2.299, "text": "  \"arbiter\": \"current-window\","}
-{"type": "output", "t": 2.299, "text": "  \"executor\": {"}
-{"type": "output", "t": 2.299, "text": "    \"title\": \"[IT EXEC] Implement a bounded slice with tests.\","}
-{"type": "output", "t": 2.299, "text": "    \"model\": \"executor-a\","}
-{"type": "output", "t": 2.299, "text": "    \"thinking\": null,"}
-{"type": "output", "t": 2.299, "text": "    \"model_receipt\": {"}
-{"type": "output", "t": 2.299, "text": "      \"requested_model\": null,"}
-{"type": "output", "t": 2.299, "text": "      \"applied_model\": \"executor-a\","}
-{"type": "output", "t": 2.299, "text": "      \"model_source\": \"adapter-default\","}
-{"type": "output", "t": 2.299, "text": "      \"requested_effort\": null,"}
-{"type": "output", "t": 2.299, "text": "      \"applied_effort\": null,"}
-{"type": "output", "t": 2.299, "text": "      \"effort_source\": \"none\","}
-{"type": "output", "t": 2.299, "text": "      \"fallback_occurred\": false,"}
-{"type": "output", "t": 2.299, "text": "      \"readback\": \"unreadback\""}
-{"type": "output", "t": 2.299, "text": "    }"}
-{"type": "output", "t": 2.299, "text": "  },"}
-{"type": "output", "t": 2.299, "text": "  \"reviewer\": {"}
-{"type": "output", "t": 2.299, "text": "    \"title\": \"[IT REVIEW] Implement a bounded slice with tests.\","}
-{"type": "output", "t": 2.299, "text": "    \"model\": \"reviewer-b\","}
-{"type": "output", "t": 2.299, "text": "    \"thinking\": null,"}
-{"type": "output", "t": 2.299, "text": "    \"model_receipt\": {"}
-{"type": "output", "t": 2.299, "text": "      \"requested_model\": null,"}
-{"type": "output", "t": 2.299, "text": "      \"applied_model\": \"reviewer-b\","}
-{"type": "output", "t": 2.299, "text": "      \"model_source\": \"adapter-default\","}
-{"type": "output", "t": 2.299, "text": "      \"requested_effort\": null,"}
-{"type": "output", "t": 2.299, "text": "      \"applied_effort\": null,"}
-{"type": "output", "t": 2.299, "text": "      \"effort_source\": \"none\","}
-{"type": "output", "t": 2.299, "text": "      \"fallback_occurred\": false,"}
-{"type": "output", "t": 2.299, "text": "      \"readback\": \"unreadback\""}
-{"type": "output", "t": 2.299, "text": "    }"}
-{"type": "output", "t": 2.299, "text": "  },"}
-{"type": "output", "t": 2.299, "text": "  \"independence\": {"}
-{"type": "output", "t": 2.299, "text": "    \"level\": \"separate-sessions\""}
-{"type": "output", "t": 2.299, "text": "  },"}
-{"type": "output", "t": 2.299, "text": "  \"ledger\": \"/private/tmp/it-demo-vx_w8i39/tmpac0ohs0y/state/runs/it-20260823-001701-3394a2/ledger.md\","}
-{"type": "output", "t": 2.299, "text": "  \"phase\": \"await-executor\""}
-{"type": "output", "t": 2.299, "text": "}"}
-{"type": "output", "t": 2.301, "text": "..{"}
-{"type": "output", "t": 2.301, "text": "  \"launched\": true,"}
-{"type": "output", "t": 2.301, "text": "  \"run_id\": \"it-20260823-001701-53617b\","}
-{"type": "output", "t": 2.301, "text": "  \"arbiter\": \"current-window\","}
-{"type": "output", "t": 2.301, "text": "  \"executor\": {"}
-{"type": "output", "t": 2.301, "text": "    \"title\": \"[铁三角·执行] 实现有界任务切片。\","}
-{"type": "output", "t": 2.301, "text": "    \"model\": \"executor-a\","}
-{"type": "output", "t": 2.301, "text": "    \"thinking\": null,"}
-{"type": "output", "t": 2.301, "text": "    \"model_receipt\": {"}
-{"type": "output", "t": 2.301, "text": "      \"requested_model\": null,"}
-{"type": "output", "t": 2.301, "text": "      \"applied_model\": \"executor-a\","}
-{"type": "output", "t": 2.301, "text": "      \"model_source\": \"adapter-default\","}
-{"type": "output", "t": 2.301, "text": "      \"requested_effort\": null,"}
-{"type": "output", "t": 2.301, "text": "      \"applied_effort\": null,"}
-{"type": "output", "t": 2.301, "text": "      \"effort_source\": \"none\","}
-{"type": "output", "t": 2.301, "text": "      \"fallback_occurred\": false,"}
-{"type": "output", "t": 2.301, "text": "      \"readback\": \"unreadback\""}
-{"type": "output", "t": 2.301, "text": "    }"}
-{"type": "output", "t": 2.301, "text": "  },"}
-{"type": "output", "t": 2.301, "text": "  \"reviewer\": {"}
-{"type": "output", "t": 2.301, "text": "    \"title\": \"[铁三角·审查] 实现有界任务切片。\","}
-{"type": "output", "t": 2.301, "text": "    \"model\": \"reviewer-b\","}
-{"type": "output", "t": 2.301, "text": "    \"thinking\": null,"}
-{"type": "output", "t": 2.301, "text": "    \"model_receipt\": {"}
-{"type": "output", "t": 2.301, "text": "      \"requested_model\": null,"}
-{"type": "output", "t": 2.301, "text": "      \"applied_model\": \"reviewer-b\","}
-{"type": "output", "t": 2.301, "text": "      \"model_source\": \"adapter-default\","}
-{"type": "output", "t": 2.301, "text": "      \"requested_effort\": null,"}
-{"type": "output", "t": 2.301, "text": "      \"applied_effort\": null,"}
-{"type": "output", "t": 2.301, "text": "      \"effort_source\": \"none\","}
-{"type": "output", "t": 2.301, "text": "      \"fallback_occurred\": false,"}
-{"type": "output", "t": 2.301, "text": "      \"readback\": \"unreadback\""}
-{"type": "output", "t": 2.301, "text": "    }"}
-{"type": "output", "t": 2.301, "text": "  },"}
-{"type": "output", "t": 2.301, "text": "  \"independence\": {"}
-{"type": "output", "t": 2.301, "text": "    \"level\": \"separate-sessions\""}
-{"type": "output", "t": 2.301, "text": "  },"}
-{"type": "output", "t": 2.301, "text": "  \"ledger\": \"/private/tmp/it-demo-vx_w8i39/tmp812rn9ju/state/runs/it-20260823-001701-53617b/ledger.md\","}
-{"type": "output", "t": 2.301, "text": "  \"phase\": \"await-executor\""}
-{"type": "output", "t": 2.301, "text": "}"}
-{"type": "output", "t": 3.305, "text": "..............................................................................................................................................."}
-{"type": "output", "t": 3.305, "text": "----------------------------------------------------------------------"}
-{"type": "output", "t": 3.305, "text": "Ran 187 tests in 2.983s"}
-{"type": "output", "t": 3.305, "text": ""}
-{"type": "output", "t": 3.305, "text": "OK"}
-{"type": "output", "t": 3.313, "text": "[exit 0]"}
+{"type": "output", "t": 4.38, "text": ".........................................................{"}
+{"type": "output", "t": 4.38, "text": "  \"launched\": true,"}
+{"type": "output", "t": 4.38, "text": "  \"run_id\": \"it-20260824-095234-52dec5\","}
+{"type": "output", "t": 4.38, "text": "  \"arbiter\": \"current-window\","}
+{"type": "output", "t": 4.38, "text": "  \"executor\": {"}
+{"type": "output", "t": 4.38, "text": "    \"title\": \"[IT EXEC] Implement a bounded slice with tests.\","}
+{"type": "output", "t": 4.38, "text": "    \"model\": \"executor-a\","}
+{"type": "output", "t": 4.38, "text": "    \"thinking\": null,"}
+{"type": "output", "t": 4.38, "text": "    \"model_receipt\": {"}
+{"type": "output", "t": 4.38, "text": "      \"requested_model\": null,"}
+{"type": "output", "t": 4.38, "text": "      \"applied_model\": \"executor-a\","}
+{"type": "output", "t": 4.38, "text": "      \"model_source\": \"adapter-default\","}
+{"type": "output", "t": 4.38, "text": "      \"requested_effort\": null,"}
+{"type": "output", "t": 4.38, "text": "      \"applied_effort\": null,"}
+{"type": "output", "t": 4.38, "text": "      \"effort_source\": \"none\","}
+{"type": "output", "t": 4.38, "text": "      \"fallback_occurred\": false,"}
+{"type": "output", "t": 4.38, "text": "      \"readback\": \"unreadback\""}
+{"type": "output", "t": 4.38, "text": "    }"}
+{"type": "output", "t": 4.38, "text": "  },"}
+{"type": "output", "t": 4.38, "text": "  \"reviewer\": {"}
+{"type": "output", "t": 4.38, "text": "    \"title\": \"[IT REVIEW] Implement a bounded slice with tests.\","}
+{"type": "output", "t": 4.38, "text": "    \"model\": \"reviewer-b\","}
+{"type": "output", "t": 4.38, "text": "    \"thinking\": null,"}
+{"type": "output", "t": 4.38, "text": "    \"model_receipt\": {"}
+{"type": "output", "t": 4.38, "text": "      \"requested_model\": null,"}
+{"type": "output", "t": 4.38, "text": "      \"applied_model\": \"reviewer-b\","}
+{"type": "output", "t": 4.38, "text": "      \"model_source\": \"adapter-default\","}
+{"type": "output", "t": 4.38, "text": "      \"requested_effort\": null,"}
+{"type": "output", "t": 4.38, "text": "      \"applied_effort\": null,"}
+{"type": "output", "t": 4.38, "text": "      \"effort_source\": \"none\","}
+{"type": "output", "t": 4.38, "text": "      \"fallback_occurred\": false,"}
+{"type": "output", "t": 4.38, "text": "      \"readback\": \"unreadback\""}
+{"type": "output", "t": 4.38, "text": "    }"}
+{"type": "output", "t": 4.38, "text": "  },"}
+{"type": "output", "t": 4.38, "text": "  \"independence\": {"}
+{"type": "output", "t": 4.38, "text": "    \"level\": \"separate-sessions\""}
+{"type": "output", "t": 4.38, "text": "  },"}
+{"type": "output", "t": 4.38, "text": "  \"ledger\": \"/private/tmp/it-demo-p59b_gvw/tmpvjwzdqz6/state/runs/it-20260824-095234-52dec5/ledger.md\","}
+{"type": "output", "t": 4.38, "text": "  \"phase\": \"await-executor\""}
+{"type": "output", "t": 4.38, "text": "}"}
+{"type": "output", "t": 4.383, "text": "..{"}
+{"type": "output", "t": 4.383, "text": "  \"launched\": true,"}
+{"type": "output", "t": 4.383, "text": "  \"run_id\": \"it-20260824-095234-5d5601\","}
+{"type": "output", "t": 4.383, "text": "  \"arbiter\": \"current-window\","}
+{"type": "output", "t": 4.383, "text": "  \"executor\": {"}
+{"type": "output", "t": 4.383, "text": "    \"title\": \"[铁三角·执行] 实现有界任务切片。\","}
+{"type": "output", "t": 4.383, "text": "    \"model\": \"executor-a\","}
+{"type": "output", "t": 4.383, "text": "    \"thinking\": null,"}
+{"type": "output", "t": 4.383, "text": "    \"model_receipt\": {"}
+{"type": "output", "t": 4.383, "text": "      \"requested_model\": null,"}
+{"type": "output", "t": 4.383, "text": "      \"applied_model\": \"executor-a\","}
+{"type": "output", "t": 4.383, "text": "      \"model_source\": \"adapter-default\","}
+{"type": "output", "t": 4.383, "text": "      \"requested_effort\": null,"}
+{"type": "output", "t": 4.383, "text": "      \"applied_effort\": null,"}
+{"type": "output", "t": 4.383, "text": "      \"effort_source\": \"none\","}
+{"type": "output", "t": 4.383, "text": "      \"fallback_occurred\": false,"}
+{"type": "output", "t": 4.383, "text": "      \"readback\": \"unreadback\""}
+{"type": "output", "t": 4.383, "text": "    }"}
+{"type": "output", "t": 4.383, "text": "  },"}
+{"type": "output", "t": 4.383, "text": "  \"reviewer\": {"}
+{"type": "output", "t": 4.383, "text": "    \"title\": \"[铁三角·审查] 实现有界任务切片。\","}
+{"type": "output", "t": 4.383, "text": "    \"model\": \"reviewer-b\","}
+{"type": "output", "t": 4.383, "text": "    \"thinking\": null,"}
+{"type": "output", "t": 4.383, "text": "    \"model_receipt\": {"}
+{"type": "output", "t": 4.383, "text": "      \"requested_model\": null,"}
+{"type": "output", "t": 4.383, "text": "      \"applied_model\": \"reviewer-b\","}
+{"type": "output", "t": 4.383, "text": "      \"model_source\": \"adapter-default\","}
+{"type": "output", "t": 4.383, "text": "      \"requested_effort\": null,"}
+{"type": "output", "t": 4.383, "text": "      \"applied_effort\": null,"}
+{"type": "output", "t": 4.383, "text": "      \"effort_source\": \"none\","}
+{"type": "output", "t": 4.383, "text": "      \"fallback_occurred\": false,"}
+{"type": "output", "t": 4.383, "text": "      \"readback\": \"unreadback\""}
+{"type": "output", "t": 4.383, "text": "    }"}
+{"type": "output", "t": 4.383, "text": "  },"}
+{"type": "output", "t": 4.383, "text": "  \"independence\": {"}
+{"type": "output", "t": 4.383, "text": "    \"level\": \"separate-sessions\""}
+{"type": "output", "t": 4.383, "text": "  },"}
+{"type": "output", "t": 4.383, "text": "  \"ledger\": \"/private/tmp/it-demo-p59b_gvw/tmpftho9zp7/state/runs/it-20260824-095234-5d5601/ledger.md\","}
+{"type": "output", "t": 4.383, "text": "  \"phase\": \"await-executor\""}
+{"type": "output", "t": 4.383, "text": "}"}
+{"type": "output", "t": 5.537, "text": "....................................................................................................................................................."}
+{"type": "output", "t": 5.537, "text": "----------------------------------------------------------------------"}
+{"type": "output", "t": 5.537, "text": "Ran 208 tests in 5.181s"}
+{"type": "output", "t": 5.537, "text": ""}
+{"type": "output", "t": 5.537, "text": "OK"}
+{"type": "output", "t": 5.545, "text": "[exit 0]"}
 {"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % cp examples/runtime-config.example.json ~/my-runtime.json"}
-{"type": "output", "t": 0.003, "text": "[exit 0]"}
+{"type": "output", "t": 0.004, "text": "[exit 0]"}
 {"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % # ~/my-runtime.json: every <placeholder> replaced (demo-local values)"}
 {"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % python3 -m json.tool ~/my-runtime.json > /dev/null && echo \"config ready\""}
 {"type": "output", "t": 0.4, "text": "config ready"}
 {"type": "output", "t": 0.001, "text": "[exit 0]"}
 {"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % python3 scripts/iron_triangle_bridge.py --config ~/my-runtime.json doctor"}
-{"type": "output", "t": 0.051, "text": "{"}
-{"type": "output", "t": 0.051, "text": "  \"ok\": true,"}
-{"type": "output", "t": 0.051, "text": "  \"tool_version\": \"0.3.1\","}
-{"type": "output", "t": 0.051, "text": "  \"config_schema_version\": 2,"}
-{"type": "output", "t": 0.051, "text": "  \"checks\": ["}
-{"type": "output", "t": 0.051, "text": "    {"}
-{"type": "output", "t": 0.051, "text": "      \"name\": \"python\","}
-{"type": "output", "t": 0.051, "text": "      \"status\": \"pass\","}
-{"type": "output", "t": 0.051, "text": "      \"detail\": \"python 3.9.6\""}
-{"type": "output", "t": 0.051, "text": "    },"}
-{"type": "output", "t": 0.051, "text": "    {"}
-{"type": "output", "t": 0.051, "text": "      \"name\": \"config\","}
-{"type": "output", "t": 0.051, "text": "      \"status\": \"pass\","}
-{"type": "output", "t": 0.051, "text": "      \"detail\": \"loaded at schema v2: /private/tmp/it-demo-vx_w8i39/home/my-runtime.json\""}
-{"type": "output", "t": 0.051, "text": "    },"}
-{"type": "output", "t": 0.051, "text": "    {"}
-{"type": "output", "t": 0.051, "text": "      \"name\": \"state_dir\","}
-{"type": "output", "t": 0.051, "text": "      \"status\": \"pass\","}
-{"type": "output", "t": 0.051, "text": "      \"detail\": \"writable: /private/tmp/it-demo-vx_w8i39/home/it-demo-state\""}
-{"type": "output", "t": 0.051, "text": "    },"}
-{"type": "output", "t": 0.051, "text": "    {"}
-{"type": "output", "t": 0.051, "text": "      \"name\": \"event_stream.kimi-code\","}
-{"type": "output", "t": 0.051, "text": "      \"status\": \"pass\","}
-{"type": "output", "t": 0.051, "text": "      \"detail\": \"configured and present\""}
-{"type": "output", "t": 0.051, "text": "    },"}
-{"type": "output", "t": 0.051, "text": "    {"}
-{"type": "output", "t": 0.051, "text": "      \"name\": \"supervisor\","}
-{"type": "output", "t": 0.051, "text": "      \"status\": \"pass\","}
-{"type": "output", "t": 0.051, "text": "      \"detail\": \"native target: launchd\""}
-{"type": "output", "t": 0.051, "text": "    }"}
-{"type": "output", "t": 0.051, "text": "  ]"}
-{"type": "output", "t": 0.051, "text": "}"}
-{"type": "output", "t": 0.055, "text": "[exit 0]"}
+{"type": "output", "t": 0.057, "text": "{"}
+{"type": "output", "t": 0.057, "text": "  \"ok\": true,"}
+{"type": "output", "t": 0.057, "text": "  \"tool_version\": \"0.3.2\","}
+{"type": "output", "t": 0.057, "text": "  \"config_schema_version\": 2,"}
+{"type": "output", "t": 0.057, "text": "  \"checks\": ["}
+{"type": "output", "t": 0.057, "text": "    {"}
+{"type": "output", "t": 0.057, "text": "      \"name\": \"python\","}
+{"type": "output", "t": 0.057, "text": "      \"status\": \"pass\","}
+{"type": "output", "t": 0.057, "text": "      \"detail\": \"python 3.9.6\""}
+{"type": "output", "t": 0.057, "text": "    },"}
+{"type": "output", "t": 0.057, "text": "    {"}
+{"type": "output", "t": 0.057, "text": "      \"name\": \"config\","}
+{"type": "output", "t": 0.057, "text": "      \"status\": \"pass\","}
+{"type": "output", "t": 0.057, "text": "      \"detail\": \"loaded at schema v2: /private/tmp/it-demo-p59b_gvw/home/my-runtime.json\""}
+{"type": "output", "t": 0.057, "text": "    },"}
+{"type": "output", "t": 0.057, "text": "    {"}
+{"type": "output", "t": 0.057, "text": "      \"name\": \"state_dir\","}
+{"type": "output", "t": 0.057, "text": "      \"status\": \"pass\","}
+{"type": "output", "t": 0.057, "text": "      \"detail\": \"writable: /private/tmp/it-demo-p59b_gvw/home/it-demo-state\""}
+{"type": "output", "t": 0.057, "text": "    },"}
+{"type": "output", "t": 0.057, "text": "    {"}
+{"type": "output", "t": 0.057, "text": "      \"name\": \"event_stream.kimi-code\","}
+{"type": "output", "t": 0.057, "text": "      \"status\": \"pass\","}
+{"type": "output", "t": 0.057, "text": "      \"detail\": \"configured and present\""}
+{"type": "output", "t": 0.057, "text": "    },"}
+{"type": "output", "t": 0.057, "text": "    {"}
+{"type": "output", "t": 0.057, "text": "      \"name\": \"supervisor\","}
+{"type": "output", "t": 0.057, "text": "      \"status\": \"pass\","}
+{"type": "output", "t": 0.057, "text": "      \"detail\": \"native target: launchd\""}
+{"type": "output", "t": 0.057, "text": "    }"}
+{"type": "output", "t": 0.057, "text": "  ]"}
+{"type": "output", "t": 0.057, "text": "}"}
+{"type": "output", "t": 0.061, "text": "[exit 0]"}
 {"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % python3 src/iron_triangle/sanitizer.py ."}
-{"type": "output", "t": 0.1, "text": "sanitization scan passed: 0 hits across all rules"}
-{"type": "output", "t": 0.102, "text": "[exit 0]"}
+{"type": "output", "t": 0.117, "text": "sanitization scan passed: 0 hits across all rules"}
+{"type": "output", "t": 0.12, "text": "[exit 0]"}
 {"type": "prompt", "t": 0.0, "text": "demo@cleanroom iron-triangle % python3 scripts/build_skills.py --check"}
-{"type": "output", "t": 0.023, "text": "generated skills are up to date"}
-{"type": "output", "t": 0.025, "text": "[exit 0]"}
+{"type": "output", "t": 0.029, "text": "generated skills are up to date"}
+{"type": "output", "t": 0.031, "text": "[exit 0]"}

@@ -25,7 +25,7 @@ Deliberately excluded: `agent-framework` (this is a protocol, not a framework), 
 | Requirement | Value | Status |
 |---|---|---|
 | Recommended size | 1280×640 (2:1) | `docs/assets/social-preview.png` is exactly 1280×640 (checked by `tests/test_release_assets.py`) |
-| Generated file size (bytes) | 92397 | must stay < 1 MiB; this declared value is asserted against the real file by `tests/test_release_assets.py` — regenerate the asset and update this row together, never by hand alone |
+| Generated file size (bytes) | 92456 | must stay < 1 MiB; this declared value is asserted against the real file by `tests/test_release_assets.py` — regenerate the asset and update this row together, never by hand alone |
 | Formats accepted | PNG or JPG | PNG |
 | Content | protocol roles + budgets, real quick-start output lines; no marketing claims | source: `docs/assets/social-preview.svg` |
 
